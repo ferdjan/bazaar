@@ -1,0 +1,24 @@
+<%- include('../partials/head') %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1><%= t('admin.users') %></h1>
+  <table class="table">
+    <thead>
+      <tr>
+        <th><%= t('auth.name') %></th>
+        <th><%= t('auth.email') %></th>
+        <th><%= t('order.date') %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% users.forEach(function(u){ %>
+        <tr>
+          <td><%= u.name %></td>
+          <td><%= u.email %></td>
+          <td><%= u.created_at %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</main>
+<%- include('../partials/footer') %>

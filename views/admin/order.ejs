@@ -1,0 +1,35 @@
+<%- include('../partials/head') %>
+<%- include('../partials/admin-nav') %>
+<main class="container narrow">
+  <a href="/admin/commandes" class="back">← <%= t('common.back') %></a>
+  <h1><%= t('order.details') %> — <%= order.ref %></h1>
+
+  <p><%= t('admin.customer') %> : <strong><%= order.nom %></strong></p>
+  <p><%= t('auth.email') %> : <%= order.email %></p>
+  <p><%= t('auth.phone') %> : <%= order.telephone %></p>
+  <p><%= t('checkout.address') %> : <%= order.adresse %>, <%= order.ville %></p>
+  <p><%= t('order.payment') %> : <%= t('pay.' + order.payment_method) %> — <%= t('pay.' + order.payment_status) %></p>
+
+  <table class="table">
+    <thead>
+      <tr><th><%= t('cart.product') %></th><th><%= t('cart.qty') %></th><th><%= t('cart.price') %></th></tr>
+    </thead>
+    <tbody>
+      <% order.items.forEach(function(it){ %>
+        <tr><td><%= it.name %><% if (it.size) { %> <span class="chip"><%= it.size %></span><% } %></td><td><%= it.qty %></td><td><%= formatDzd(it.price_dzd) %></td></tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <p class="total"><%= t('order.total') %> : <strong><%= formatDzd(order.total_dzd) %></strong></p>
+
+  <form method="post" action="/admin/commandes/<%= order.ref %>/statut" class="filters">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <select name="status">
+      <% ['en_attente','payee','expediee','livree','annulee'].forEach(function(s){ %>
+        <option value="<%= s %>" <%= order.status === s ? 'selected' : '' %>><%= t('status.' + s) %></option>
+      <% }) %>
+    </select>
+    <button type="submit" class="btn"><%= t('admin.save') %></button>
+  </form>
+</main>
+<%- include('../partials/footer') %>

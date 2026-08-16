@@ -1,0 +1,31 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+<main class="container narrow">
+  <h1><%= t('order.details') %> — <%= order.ref %></h1>
+  <p><%= t('order.status') %> : <strong><%= t('status.' + order.status) %></strong></p>
+  <p><%= t('order.payment') %> : <strong><%= t('pay.' + order.payment_method) %></strong> — <%= t('pay.' + order.payment_status) %></p>
+  <p><%= t('order.date') %> : <%= order.created_at %></p>
+  <table class="table">
+    <thead>
+      <tr>
+        <th><%= t('cart.product') %></th>
+        <th><%= t('cart.qty') %></th>
+        <th><%= t('cart.price') %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% order.items.forEach(function(it){ %>
+        <tr>
+          <td><%= it.name %><% if (it.size) { %> <span class="chip"><%= it.size %></span><% } %></td>
+          <td><%= it.qty %></td>
+          <td><%= formatDzd(it.price_dzd) %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <p class="total"><%= t('order.total') %> : <strong><%= formatDzd(order.total_dzd) %></strong></p>
+  <% if (order.payment_status === 'pending' && (order.payment_method === 'stripe' || order.payment_method === 'paypal')) { %>
+    <a href="/paiement/<%= order.payment_method %>/<%= order.ref %>" class="btn btn-primary"><%= t('order.pay_again') %></a>
+  <% } %>
+</main>
+<%- include('../partials/footer') %>

@@ -1,0 +1,56 @@
+<%- include('../partials/head') %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1><%= t('admin.dashboard') %></h1>
+  <div class="stat-grid">
+    <div class="stat">
+      <span class="stat-num"><%= formatDzd(revenue) %></span>
+      <span class="stat-label"><%= t('admin.revenue') %></span>
+    </div>
+    <div class="stat">
+      <span class="stat-num"><%= totalOrders %></span>
+      <span class="stat-label"><%= t('admin.total_orders') %></span>
+    </div>
+    <div class="stat">
+      <span class="stat-num"><%= productsCount %></span>
+      <span class="stat-label"><%= t('admin.total_products') %></span>
+    </div>
+    <div class="stat">
+      <span class="stat-num"><%= customers %></span>
+      <span class="stat-label"><%= t('admin.users') %></span>
+    </div>
+    <div class="stat">
+      <span class="stat-num"><%= lowStock %></span>
+      <span class="stat-label"><%= t('admin.low_stock') %></span>
+    </div>
+  </div>
+
+  <h2><%= t('admin.orders') %></h2>
+  <% if (!recentOrders.length) { %>
+    <p class="empty"><%= t('account.no_orders') %></p>
+  <% } else { %>
+    <table class="table">
+      <thead>
+        <tr>
+          <th><%= t('order.ref') %></th>
+          <th><%= t('admin.customer') %></th>
+          <th><%= t('order.total') %></th>
+          <th><%= t('order.status') %></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% recentOrders.forEach(function(o){ %>
+          <tr>
+            <td><%= o.ref %></td>
+            <td><%= o.nom %></td>
+            <td><%= formatDzd(o.total_dzd) %></td>
+            <td><%= t('status.' + o.status) %></td>
+            <td><a href="/admin/commandes/<%= o.ref %>" class="btn btn-sm"><%= t('common.view') %></a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</main>
+<%- include('../partials/footer') %>

@@ -1,0 +1,24 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+<main class="container narrow">
+  <% if (typeof cancelled !== 'undefined' && cancelled) { %>
+    <h1><%= t('order.cancelled') %></h1>
+    <% if (order) { %>
+      <a href="/paiement/<%= order.payment_method %>/<%= order.ref %>" class="btn btn-primary"><%= t('order.pay_again') %></a>
+    <% } %>
+  <% } else { %>
+    <div class="success-box">
+      <h1>✅ <%= t('order.placed') %></h1>
+      <p><%= t('order.thanks') %></p>
+    </div>
+    <% if (order) { %>
+      <p><%= t('order.ref') %> : <strong><%= order.ref %></strong></p>
+      <p><%= t('order.total') %> : <strong><%= formatDzd(order.total_dzd) %></strong></p>
+      <p><%= t('order.payment') %> : <%= t('pay.' + order.payment_method) %> — <%= t('pay.' + order.payment_status) %></p>
+      <p><%= t('order.status') %> : <%= t('status.' + order.status) %></p>
+      <% if (user) { %><a href="/commande/<%= order.ref %>" class="btn"><%= t('common.details') %></a><% } %>
+    <% } %>
+  <% } %>
+  <a href="/catalogue" class="btn"><%= t('cart.continue') %></a>
+</main>
+<%- include('../partials/footer') %>

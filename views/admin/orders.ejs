@@ -1,0 +1,34 @@
+<%- include('../partials/head') %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1><%= t('admin.orders') %></h1>
+  <% if (!orders.length) { %>
+    <p class="empty"><%= t('account.no_orders') %></p>
+  <% } else { %>
+    <table class="table">
+      <thead>
+        <tr>
+          <th><%= t('order.ref') %></th>
+          <th><%= t('admin.customer') %></th>
+          <th><%= t('order.total') %></th>
+          <th><%= t('order.payment') %></th>
+          <th><%= t('order.status') %></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% orders.forEach(function(o){ %>
+          <tr>
+            <td><%= o.ref %></td>
+            <td><%= o.nom %></td>
+            <td><%= formatDzd(o.total_dzd) %></td>
+            <td><%= t('pay.' + o.payment_method) %></td>
+            <td><%= t('status.' + o.status) %></td>
+            <td><a href="/admin/commandes/<%= o.ref %>" class="btn btn-sm"><%= t('common.view') %></a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</main>
+<%- include('../partials/footer') %>

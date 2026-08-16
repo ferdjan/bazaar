@@ -1,0 +1,36 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+<main class="container">
+  <h1><%= t('checkout.title') %></h1>
+  <% if (typeof error !== 'undefined') { %><div class="flash flash-error"><%= t(error) %></div><% } %>
+  <form method="post" action="/commande" class="checkout-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+
+    <h2><%= t('checkout.info') %></h2>
+    <label for="nom"><%= t('auth.name') %></label>
+    <input id="nom" type="text" name="nom" value="<%= form ? form.nom : (user ? user.name : '') %>" required>
+    <label for="email"><%= t('auth.email') %></label>
+    <input id="email" type="email" name="email" value="<%= form ? form.email : (user ? user.email : '') %>" required>
+    <label for="telephone"><%= t('auth.phone') %></label>
+    <input id="telephone" type="tel" name="telephone" value="<%= form ? form.telephone : '' %>" required>
+    <label for="adresse"><%= t('checkout.address') %></label>
+    <input id="adresse" type="text" name="adresse" value="<%= form ? form.adresse : '' %>" required>
+    <label for="ville"><%= t('checkout.city') %></label>
+    <input id="ville" type="text" name="ville" value="<%= form ? form.ville : '' %>" required>
+
+    <h2><%= t('checkout.payment') %></h2>
+    <label class="radio"><input type="radio" name="payment_method" value="cod" <%= (!form || form.payment_method === 'cod') ? 'checked' : '' %>> <%= t('checkout.cod') %></label>
+    <label class="radio"><input type="radio" name="payment_method" value="stripe" <%= (form && form.payment_method === 'stripe') ? 'checked' : '' %>> <%= t('checkout.stripe') %></label>
+    <label class="radio"><input type="radio" name="payment_method" value="paypal" <%= (form && form.payment_method === 'paypal') ? 'checked' : '' %>> <%= t('checkout.paypal') %></label>
+    <p class="note"><%= t('checkout.note_eur') %></p>
+
+    <h2><%= t('cart.subtotal') %></h2>
+    <% items.forEach(function(it){ %>
+      <p class="line"><%= pname(it.product) %><% if (it.size) { %> (<%= t('product.size') %> <%= it.size %>)<% } %> × <%= it.qty %> — <strong><%= formatDzd(it.lineTotal) %></strong></p>
+    <% }) %>
+    <p class="total"><%= t('cart.total_due') %> : <strong><%= formatDzd(total) %></strong></p>
+
+    <button type="submit" class="btn btn-primary block"><%= t('checkout.place') %></button>
+  </form>
+</main>
+<%- include('../partials/footer') %>

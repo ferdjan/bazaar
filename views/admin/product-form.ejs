@@ -1,0 +1,44 @@
+<%- include('../partials/head') %>
+<%- include('../partials/admin-nav') %>
+<main class="container narrow">
+  <h1><%= product ? t('admin.edit_product') : t('admin.add_product') %></h1>
+  <form method="post" action="<%= product ? '/admin/produits/' + product.id : '/admin/produits/nouveau' %>?_csrf=<%= csrf %>" enctype="multipart/form-data" class="auth-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+
+    <label for="name_fr"><%= t('admin.name_fr') %></label>
+    <input id="name_fr" type="text" name="name_fr" value="<%= product ? product.name_fr : '' %>" required>
+    <label for="name_ar"><%= t('admin.name_ar') %></label>
+    <input id="name_ar" type="text" name="name_ar" value="<%= product ? product.name_ar : '' %>">
+
+    <label for="desc_fr"><%= t('admin.desc_fr') %></label>
+    <textarea id="desc_fr" name="description_fr" rows="3"><%= product ? product.description_fr : '' %></textarea>
+    <label for="desc_ar"><%= t('admin.desc_ar') %></label>
+    <textarea id="desc_ar" name="description_ar" rows="3"><%= product ? product.description_ar : '' %></textarea>
+
+    <label for="price"><%= t('admin.price') %></label>
+    <input id="price" type="number" name="price_dzd" min="0" value="<%= product ? product.price_dzd : '' %>" required>
+    <label for="stock"><%= t('admin.stock') %></label>
+    <input id="stock" type="number" name="stock" min="0" value="<%= product ? product.stock : 0 %>" required>
+
+    <label for="sizes"><%= t('admin.sizes') %></label>
+    <input id="sizes" type="text" name="sizes" value="<%= product ? product.sizes : '' %>" placeholder="S,M,L,XL">
+    <p class="muted"><%= t('admin.sizes_hint') %></p>
+
+    <label for="category"><%= t('admin.category') %></label>
+    <select id="category" name="category_id">
+      <option value="">—</option>
+      <% categories.forEach(function(c){ %>
+        <option value="<%= c.id %>" <%= (product && product.category_id === c.id) ? 'selected' : '' %>><%= c.name_fr %></option>
+      <% }) %>
+    </select>
+
+    <label for="image"><%= t('admin.image') %></label>
+    <% if (product && product.image) { %><img src="<%= product.image %>" class="thumb lg" alt=""><% } %>
+    <input id="image" type="file" name="image" accept="image/*">
+
+    <label class="radio"><input type="checkbox" name="active" value="1" <%= (!product || product.active) ? 'checked' : '' %>> <%= t('admin.active') %></label>
+
+    <button type="submit" class="btn btn-primary block"><%= t('admin.save') %></button>
+  </form>
+</main>
+<%- include('../partials/footer') %>

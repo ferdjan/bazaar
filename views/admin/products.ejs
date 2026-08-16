@@ -1,0 +1,41 @@
+<%- include('../partials/head') %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <div class="row-between">
+    <h1><%= t('admin.products') %></h1>
+    <a href="/admin/produits/nouveau" class="btn btn-primary"><%= t('admin.add_product') %></a>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th></th>
+        <th><%= t('admin.name_fr') %></th>
+        <th><%= t('admin.price') %></th>
+        <th><%= t('admin.stock') %></th>
+        <th><%= t('admin.active') %></th>
+        <th><%= t('admin.actions') %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% products.forEach(function(p){ %>
+        <tr>
+          <td>
+            <% if (p.image) { %><img src="<%= p.image %>" class="thumb" alt=""><% } else { %><span class="thumb placeholder">🛍️</span><% } %>
+          </td>
+          <td><%= p.name_fr %></td>
+          <td><%= formatDzd(p.price_dzd) %></td>
+          <td><%= p.stock %></td>
+          <td><%= p.active ? '✔' : '—' %></td>
+          <td class="actions">
+            <a href="/admin/produits/<%= p.id %>" class="btn btn-sm"><%= t('admin.edit') %></a>
+            <form method="post" action="/admin/produits/<%= p.id %>/supprimer" class="inline-form">
+              <input type="hidden" name="_csrf" value="<%= csrf %>">
+              <button type="submit" class="btn btn-danger btn-sm"><%= t('admin.delete') %></button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</main>
+<%- include('../partials/footer') %>

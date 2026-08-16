@@ -1,0 +1,8 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+<main class="container narrow center">
+  <h1>500</h1>
+  <p><%= typeof message !== 'undefined' && message ? message : 'Une erreur est survenue.' %></p>
+  <a href="/" class="btn"><%= t('nav.home') %></a>
+</main>
+<%- include('../partials/footer') %>

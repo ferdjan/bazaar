@@ -1,0 +1,25 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+<main class="container">
+  <h1><%= t('nav.catalog') %></h1>
+  <form method="get" action="/catalogue" class="filters">
+    <select name="categorie">
+      <option value=""><%= t('cat.all') %></option>
+      <% categories.forEach(function(c){ %>
+        <option value="<%= c.id %>" <%= activeCat === c.id ? 'selected' : '' %>><%= cname(c) %></option>
+      <% }) %>
+    </select>
+    <input type="text" name="q" value="<%= q %>" placeholder="<%= t('cat.search') %>">
+    <button type="submit" class="btn"><%= t('cat.search_btn') %></button>
+  </form>
+  <% if (!products.length) { %>
+    <p class="empty"><%= t('cat.no_results') %></p>
+  <% } else { %>
+    <div class="product-grid">
+      <% products.forEach(function(p){ %>
+        <%- include('../partials/product-card', { p: p }) %>
+      <% }) %>
+    </div>
+  <% } %>
+</main>
+<%- include('../partials/footer') %>

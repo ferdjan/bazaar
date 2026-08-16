@@ -1,0 +1,37 @@
+<%- include('../partials/head') %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <h1><%= t('admin.categories') %></h1>
+  <form method="post" action="/admin/categories/nouveau" class="filters">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="text" name="name_fr" placeholder="<%= t('admin.name_fr') %>" required>
+    <input type="text" name="name_ar" placeholder="<%= t('admin.name_ar') %>">
+    <button type="submit" class="btn btn-primary"><%= t('admin.add_category') %></button>
+  </form>
+  <table class="table">
+    <thead>
+      <tr>
+        <th><%= t('admin.name_fr') %></th>
+        <th><%= t('admin.name_ar') %></th>
+        <th><%= t('admin.slug') %></th>
+        <th><%= t('admin.actions') %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% categories.forEach(function(c){ %>
+        <tr>
+          <td><%= c.name_fr %></td>
+          <td><%= c.name_ar %></td>
+          <td><%= c.slug %></td>
+          <td>
+            <form method="post" action="/admin/categories/<%= c.id %>/supprimer" class="inline-form">
+              <input type="hidden" name="_csrf" value="<%= csrf %>">
+              <button type="submit" class="btn btn-danger btn-sm"><%= t('admin.delete') %></button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</main>
+<%- include('../partials/footer') %>

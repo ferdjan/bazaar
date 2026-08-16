@@ -1,0 +1,30 @@
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div class="footer-col footer-brand">
+      <a href="/" class="brand"><span class="brand-mark">B</span>azaar</a>
+      <p><%= t('brand.tagline') %></p>
+    </div>
+    <div class="footer-col">
+      <h4><%= t('footer.shop') %></h4>
+      <ul class="footer-links">
+        <li><a href="/catalogue"><%= t('cat.all') %></a></li>
+        <% categories.forEach(function(c){ %>
+          <li><a href="/catalogue?categorie=<%= c.id %>"><%= cname(c) %></a></li>
+        <% }) %>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4><%= t('footer.payments') %></h4>
+      <div class="payments">
+        <span class="pay-badge">💳 Carte</span>
+        <span class="pay-badge">🅿️ PayPal</span>
+        <span class="pay-badge">💵 <%= t('checkout.cod') %></span>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p style="margin:0">© 2026 Bazaar · <%= t('footer.rights') %></p>
+  </div>
+</footer>
+</body>
+</html>

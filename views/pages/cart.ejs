@@ -1,0 +1,57 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+<main class="container">
+  <h1><%= t('cart.title') %></h1>
+  <% if (!items.length) { %>
+    <p class="empty"><%= t('cart.empty') %></p>
+    <a href="/catalogue" class="btn btn-primary"><%= t('cart.continue') %></a>
+  <% } else { %>
+    <div class="cart-layout">
+      <table class="table">
+        <thead>
+          <tr>
+            <th><%= t('cart.product') %></th>
+            <th><%= t('cart.price') %></th>
+            <th><%= t('cart.qty') %></th>
+            <th><%= t('cart.total') %></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.forEach(function(it){ %>
+            <tr>
+              <td><a href="/produit/<%= it.product.slug %>"><%= pname(it.product) %></a><% if (it.size) { %> <span class="chip"><%= it.size %></span><% } %></td>
+              <td><%= formatDzd(it.product.price_dzd) %></td>
+              <td>
+                <form method="post" action="/panier/modifier" class="inline-form">
+                  <input type="hidden" name="_csrf" value="<%= csrf %>">
+                  <input type="hidden" name="productId" value="<%= it.product.id %>">
+                  <input type="hidden" name="size" value="<%= it.size %>">
+                  <input type="number" name="qty" value="<%= it.qty %>" min="1" max="<%= it.product.stock %>" class="qty-input">
+                  <button type="submit" class="btn btn-sm"><%= t('cart.update') %></button>
+                </form>
+              </td>
+              <td><%= formatDzd(it.lineTotal) %></td>
+              <td>
+                <form method="post" action="/panier/supprimer" class="inline-form">
+                  <input type="hidden" name="_csrf" value="<%= csrf %>">
+                  <input type="hidden" name="productId" value="<%= it.product.id %>">
+                  <input type="hidden" name="size" value="<%= it.size %>">
+                  <button type="submit" class="btn btn-danger btn-sm"><%= t('cart.remove') %></button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <aside class="cart-summary">
+        <p><%= t('cart.subtotal') %> : <strong><%= formatDzd(total) %></strong></p>
+        <p><%= t('cart.shipping') %> : <strong><%= t('cart.shipping_free') %></strong></p>
+        <p class="total"><%= t('cart.total_due') %> : <strong><%= formatDzd(total) %></strong></p>
+        <a href="/commande" class="btn btn-primary block"><%= t('cart.checkout') %></a>
+        <a href="/catalogue" class="btn block"><%= t('cart.continue') %></a>
+      </aside>
+    </div>
+  <% } %>
+</main>
+<%- include('../partials/footer') %>

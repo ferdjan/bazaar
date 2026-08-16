@@ -1,0 +1,23 @@
+<header class="site-header admin">
+  <div class="container nav">
+    <a href="/" class="brand"><span class="brand-mark">B</span>azaar</a>
+    <nav class="nav-links">
+      <a href="/admin" class="<%= path === '/admin' ? 'active' : '' %>"><%= t('admin.dashboard') %></a>
+      <a href="/admin/produits" class="<%= path.startsWith('/admin/produits') ? 'active' : '' %>"><%= t('admin.products') %></a>
+      <a href="/admin/categories" class="<%= path.startsWith('/admin/categories') ? 'active' : '' %>"><%= t('admin.categories') %></a>
+      <a href="/admin/commandes" class="<%= path.startsWith('/admin/commandes') ? 'active' : '' %>"><%= t('admin.orders') %></a>
+      <a href="/admin/clients" class="<%= path === '/admin/clients' ? 'active' : '' %>"><%= t('admin.users') %></a>
+      <a href="/lang/<%= lang === 'ar' ? 'fr' : 'ar' %>"><%= t('lang.switch') %></a>
+      <a href="/" class="back-store">🏬 <%= t('admin.back_to_store') %></a>
+      <form action="/deconnexion" method="post" class="inline-form">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <button type="submit" class="link-btn"><%= t('nav.logout') %></button>
+      </form>
+    </nav>
+  </div>
+</header>
+<% if (flash) { %>
+  <div class="container">
+    <div class="flash flash-<%= flash.type %>"><%= t(flash.key) %></div>
+  </div>
+<% } %>

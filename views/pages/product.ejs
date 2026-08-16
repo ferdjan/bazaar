@@ -1,0 +1,55 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+<main class="container">
+  <a href="/catalogue" class="back">← <%= t('common.back') %></a>
+  <div class="product-detail">
+    <div class="product-img large">
+      <% if (product.image) { %><img src="<%= product.image %>" alt="<%= pname(product) %>"><% } else { %><span class="placeholder">🛍️</span><% } %>
+    </div>
+    <div class="product-info">
+      <% if (cat) { %><span class="chip"><%= cname(cat) %></span><% } %>
+      <h1><%= pname(product) %></h1>
+      <p class="price big"><%= formatDzd(product.price_dzd) %></p>
+      <p class="desc"><%= pdesc(product) %></p>
+      <p class="stock <%= product.stock > 0 ? 'in' : 'out' %>">
+        <%= product.stock > 0 ? t('product.stock') + ' (' + product.stock + ')' : t('product.out_of_stock') %>
+      </p>
+      <% if (product.stock > 0) { %>
+        <% const sizes = (product.sizes || '').split(',').map(s => s.trim()).filter(Boolean); %>
+        <form method="post" action="/panier/ajouter" class="add-form">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <input type="hidden" name="productId" value="<%= product.id %>">
+          <% if (sizes.length) { %>
+            <% if (sizes.length === 1) { %>
+              <input type="hidden" name="size" value="<%= sizes[0] %>">
+              <p class="size-picker"><span class="size-opt"><span><%= sizes[0] %></span></span></p>
+            <% } else { %>
+              <p class="muted"><%= t('product.size') %> :</p>
+              <div class="size-picker">
+                <% sizes.forEach(function(s){ %>
+                  <label class="size-opt">
+                    <input type="radio" name="size" value="<%= s %>" required>
+                    <span><%= s %></span>
+                  </label>
+                <% }) %>
+              </div>
+            <% } %>
+          <% } %>
+          <input type="number" name="qty" value="1" min="1" max="<%= product.stock %>" class="qty-input">
+          <button type="submit" class="btn btn-primary"><%= t('product.add') %></button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+  <% if (related.length) { %>
+    <section class="section">
+      <h2><%= t('product.related') %></h2>
+      <div class="product-grid">
+        <% related.forEach(function(p){ %>
+          <%- include('../partials/product-card', { p: p }) %>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
+</main>
+<%- include('../partials/footer') %>

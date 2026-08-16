@@ -1,0 +1,18 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+<main class="container narrow">
+  <h1><%= t('auth.register_title') %></h1>
+  <% if (typeof error !== 'undefined') { %><div class="flash flash-error"><%= t(error) %></div><% } %>
+  <form method="post" action="/inscription" class="auth-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label for="name"><%= t('auth.name') %></label>
+    <input id="name" type="text" name="name" value="<%= typeof name !== 'undefined' ? name : '' %>" required>
+    <label for="email"><%= t('auth.email') %></label>
+    <input id="email" type="email" name="email" value="<%= typeof email !== 'undefined' ? email : '' %>" required>
+    <label for="password"><%= t('auth.password') %></label>
+    <input id="password" type="password" name="password" minlength="6" required>
+    <button type="submit" class="btn btn-primary block"><%= t('auth.register') %></button>
+  </form>
+  <p class="center"><%= t('auth.have_account') %> <a href="/connexion"><%= t('auth.login') %></a></p>
+</main>
+<%- include('../partials/footer') %>

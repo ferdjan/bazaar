@@ -1,0 +1,42 @@
+<div class="announce">
+  <div class="container announce-inner"><%= t('announce.text') %></div>
+</div>
+<header class="site-header">
+  <div class="container topbar">
+    <a href="/" class="brand"><span class="brand-mark">B</span>azaar</a>
+    <form method="get" action="/catalogue" class="nav-search" role="search">
+      <input type="text" name="q" placeholder="<%= t('cat.search') %>" aria-label="<%= t('cat.search') %>">
+      <button type="submit" class="btn btn-primary" aria-label="<%= t('cat.search_btn') %>">🔍</button>
+    </form>
+    <div class="header-actions">
+      <a href="/lang/<%= lang === 'ar' ? 'fr' : 'ar' %>" class="lang-switch"><%= t('lang.switch') %></a>
+      <% if (user) { %>
+        <a href="<%= isAdmin ? '/admin' : '/compte' %>" class="icon-btn" aria-label="<%= isAdmin ? t('nav.admin') : t('nav.account') %>">👤</a>
+        <form action="/deconnexion" method="post" class="inline-form">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button type="submit" class="link-btn"><%= t('nav.logout') %></button>
+        </form>
+      <% } else { %>
+        <a href="/connexion" class="lang-switch"><%= t('nav.login') %></a>
+        <a href="/inscription" class="btn btn-primary btn-sm"><%= t('nav.register') %></a>
+      <% } %>
+      <% if (!isAdmin) { %>
+        <a href="/panier" class="icon-btn" aria-label="<%= t('nav.cart') %>">🛒<span class="cart-count"><%= cartCount %></span></a>
+      <% } %>
+    </div>
+  </div>
+  <nav class="nav-cats">
+    <div class="container nav-cats-inner">
+      <a href="/" class="<%= path === '/' ? 'active' : '' %>"><%= t('nav.home') %></a>
+      <a href="/catalogue" class="<%= path === '/catalogue' || (typeof path !== 'undefined' && path.startsWith('/produit')) ? 'active' : '' %>"><%= t('nav.catalog') %></a>
+      <% categories.forEach(function(c){ %>
+        <a href="/catalogue?categorie=<%= c.id %>"><%= cname(c) %></a>
+      <% }) %>
+    </div>
+  </nav>
+</header>
+<% if (flash) { %>
+  <div class="container">
+    <div class="flash flash-<%= flash.type %>"><%= t(flash.key) %></div>
+  </div>
+<% } %>
