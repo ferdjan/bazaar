@@ -25,11 +25,25 @@ module.exports = {
     webhookId: process.env.PAYPAL_WEBHOOK_ID || '',
     mode: process.env.PAYPAL_MODE || 'sandbox',
   },
+  // SMTP pour l'envoi d'e-mails (réinitialisation de mot de passe…). Laissé
+  // vide, l'envoi est désactivé : en dev le lien de réinitialisation est
+  // journalisé dans la console pour permettre de tester localement.
+  smtp: {
+    host: process.env.SMTP_HOST || '',
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    secure: process.env.SMTP_SECURE === '1',
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.SMTP_FROM || '',
+  },
+  // Durée de validité (en heures) du lien de réinitialisation.
+  resetTokenTtlHours: parseInt(process.env.RESET_TOKEN_TTL_HOURS || '1', 10),
   // Seuils de rate limiting (surchargeables en test via les variables d'env).
   rateLimit: {
     loginMax: parseInt(process.env.RATE_LIMIT_LOGIN_MAX || '10', 10),
     registerMax: parseInt(process.env.RATE_LIMIT_REGISTER_MAX || '10', 10),
     paymentMax: parseInt(process.env.RATE_LIMIT_PAYMENT_MAX || '30', 10),
+    resetMax: parseInt(process.env.RATE_LIMIT_RESET_MAX || '5', 10),
     globalMax: parseInt(process.env.RATE_LIMIT_GLOBAL_MAX || '600', 10),
   },
 };

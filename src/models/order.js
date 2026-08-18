@@ -1,7 +1,7 @@
 'use strict';
 const { db } = require('../db/connection');
 const crypto = require('crypto');
-const { STATUSES, STEPS } = require('../services/orderStatus');
+const { STATUSES, stepsFor } = require('../services/orderStatus');
 
 // Colonne *_at tamponnée lors du passage à chaque étape de progression.
 // `en_attente` n'y figure pas : sa date est `created_at` (date de commande).
@@ -120,13 +120,17 @@ function setStatus(ref, status, opts = {}) {
     return true;
   }
 
-  const idx = STEPS.indexOf(status);
+  const order = db.prepare('SELECT payment_method FROM orders WHERE ref = ?').get(ref);
+  if (!order) return false;
+
+  const steps = stepsFor(order.payment_method);
+  const idx = steps.indexOf(status);
   const parts = [`status = '${status}'`]; // valeur déjà validée par la whitelist
   if (AT_FIELD[status]) {
     parts.push(`${AT_FIELD[status]} = COALESCE(${AT_FIELD[status]}, datetime('now'))`);
   }
-  for (let i = idx + 1; i < STEPS.length; i++) {
-    const f = AT_FIELD[STEPS[i]];
+  for (let i = idx + 1; i < steps.length; i++) {
+    const f = AT_FIELD[steps[i]];
     if (f) parts.push(`${f} = NULL`);
   }
   parts.push('cancelled_at = NULL');

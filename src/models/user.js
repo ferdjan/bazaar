@@ -34,4 +34,31 @@ function countCustomers() {
   return db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'customer'").get().n;
 }
 
-module.exports = { findByEmail, findById, create, listCustomers, countCustomers };
+// Associe un jeton de réinitialisation (et sa date d'expiration ISO UTC) à
+// l'utilisateur. Retourne false si l'e-mail n'existe pas (l'appelant garde une
+// réponse générique pour ne pas révéler l'existence d'un compte).
+function setResetToken(email, token, expires) {
+  const info = db.prepare(
+    'UPDATE users SET reset_token = ?, reset_expires = ? WHERE email = ?'
+  ).run(token, expires, email);
+  return info.changes > 0;
+}
+
+// Retrouve un utilisateur par jeton (brut : usage interne uniquement, ne jamais
+// exposer password_hash ni le jeton hors du modèle).
+function findByResetToken(token) {
+  if (!token) return null;
+  return db.prepare('SELECT * FROM users WHERE reset_token = ?').get(token) || null;
+}
+
+// Remplace le mot de passe et invalide le jeton (usage unique).
+function resetPassword(id, password_hash) {
+  db.prepare(
+    "UPDATE users SET password_hash = ?, reset_token = '', reset_expires = NULL WHERE id = ?"
+  ).run(password_hash, id);
+}
+
+module.exports = {
+  findByEmail, findById, create, listCustomers, countCustomers,
+  setResetToken, findByResetToken, resetPassword,
+};

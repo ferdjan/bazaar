@@ -39,6 +39,14 @@ function migrate() {
   if (!cols.includes('tracking_number')) {
     db.exec("ALTER TABLE orders ADD COLUMN tracking_number TEXT NOT NULL DEFAULT ''");
   }
+
+  const ucols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+  if (!ucols.includes('reset_token')) {
+    db.exec("ALTER TABLE users ADD COLUMN reset_token TEXT NOT NULL DEFAULT ''");
+  }
+  if (!ucols.includes('reset_expires')) {
+    db.exec('ALTER TABLE users ADD COLUMN reset_expires TEXT');
+  }
 }
 
 module.exports = { db, dbPath, migrate };

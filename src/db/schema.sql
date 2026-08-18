@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   name          TEXT NOT NULL,
   role          TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('admin', 'customer')),
+  reset_token   TEXT NOT NULL DEFAULT '',
+  reset_expires TEXT,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

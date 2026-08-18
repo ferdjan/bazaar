@@ -64,6 +64,14 @@ const strings = {
   'auth.email_exists': { fr: 'Cet e-mail est déjà utilisé.', ar: 'هذا البريد الإلكتروني مستخدم بالفعل.' },
   'auth.password_short': { fr: 'Le mot de passe doit contenir au moins 6 caractères.', ar: 'كلمة المرور يجب أن تتكون من 6 أحرف على الأقل.' },
   'auth.required': { fr: 'Veuillez remplir tous les champs.', ar: 'يرجى ملء جميع الحقول.' },
+  'auth.forgot_title': { fr: 'Mot de passe oublié', ar: 'نسيت كلمة المرور' },
+  'auth.forgot_link': { fr: 'Mot de passe oublié ?', ar: 'نسيت كلمة المرور؟' },
+  'auth.reset_send': { fr: 'Envoyer le lien', ar: 'إرسال الرابط' },
+  'auth.reset_sent': { fr: 'Si un compte existe avec cet e-mail, un lien de réinitialisation a été envoyé.', ar: 'إذا كان هناك حساب بهذا البريد الإلكتروني، فسيتم إرسال رابط إعادة التعيين.' },
+  'auth.reset_title': { fr: 'Nouveau mot de passe', ar: 'كلمة مرور جديدة' },
+  'auth.reset_save': { fr: 'Enregistrer', ar: 'حفظ' },
+  'auth.reset_invalid': { fr: 'Lien invalide ou expiré.', ar: 'الرابط غير صالح أو منتهي الصلاحية.' },
+  'auth.reset_done': { fr: 'Mot de passe modifié. Vous pouvez vous connecter.', ar: 'تم تغيير كلمة المرور. يمكنك تسجيل الدخول.' },
 
   // Checkout
   'checkout.title': { fr: 'Finaliser la commande', ar: 'إتمام الطلب' },

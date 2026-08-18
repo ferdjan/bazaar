@@ -38,4 +38,18 @@ const paymentLimiter = rateLimit({
   handler: (req, res) => denied(res),
 });
 
-module.exports = { loginLimiter, registerLimiter, paymentLimiter };
+// Limiteur de demande de réinitialisation de mot de passe (par IP + email),
+// contre l'énumération de comptes et le spam.
+const resetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: config.rateLimit.resetMax,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const email = (req.body && req.body.email ? String(req.body.email) : '').trim().toLowerCase();
+    return (req.ip || '') + '|' + email;
+  },
+  handler: (req, res) => denied(res),
+});
+
+module.exports = { loginLimiter, registerLimiter, paymentLimiter, resetLimiter };

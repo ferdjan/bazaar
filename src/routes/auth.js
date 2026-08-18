@@ -1,11 +1,15 @@
 'use strict';
 const router = require('express').Router();
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const userModel = require('../models/user');
 const orderModel = require('../models/order');
 const { requireAuth } = require('../middleware/auth');
-const { loginLimiter, registerLimiter } = require('../middleware/rateLimit');
+const { loginLimiter, registerLimiter, resetLimiter } = require('../middleware/rateLimit');
 const validate = require('../services/validate');
+const config = require('../config');
+const { logger } = require('../services/logger');
+const mail = require('../services/mail');
 
 router.get('/inscription', (req, res) => {
   res.render('pages/register', { title: 'register' });
@@ -60,6 +64,70 @@ router.post('/connexion', loginLimiter, (req, res, next) => {
     req.session.user = { id: u.id, name: u.name, email: u.email, role: u.role };
     res.redirect(dest);
   });
+});
+
+// Mot de passe oublié : demande d'un lien de réinitialisation par e-mail.
+router.get('/mot-de-passe-oublie', (req, res) => {
+  res.render('pages/forgot-password', { title: 'forgot' });
+});
+
+router.post('/mot-de-passe-oublie', resetLimiter, async (req, res) => {
+  const email = validate.textField(req.body.email, validate.MAX.email).toLowerCase();
+  if (!validate.isEmail(email)) {
+    return res.render('pages/forgot-password', { title: 'forgot', error: 'auth.invalid', email });
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + config.resetTokenTtlHours * 3600 * 1000).toISOString();
+  const found = userModel.setResetToken(email, token, expires);
+
+  // Réponse générique : ne jamais révéler si l'e-mail existe en base.
+  if (found) {
+    const link = `${config.baseUrl}/reinitialiser/${token}`;
+    const text =
+      'Bonjour,\n\n' +
+      'Pour réinitialiser votre mot de passe, ouvrez ce lien (valable ' +
+      config.resetTokenTtlHours + ' h) :\n' + link + '\n\n' +
+      "Si vous n'avez pas demandé cette réinitialisation, ignorez cet e-mail.\n";
+    try {
+      await mail.sendMail({ to: email, subject: 'Réinitialisation de votre mot de passe', text });
+    } catch (err) {
+      // SMTP non configuré ou envoi en échec : on journalise le lien en dev
+      // uniquement, pour permettre de tester localement.
+      logger.warn('échec envoi e-mail réinitialisation', { err: String((err && err.message) || err) });
+      if (process.env.NODE_ENV !== 'production') {
+        logger.info('lien de réinitialisation (dev)', { link });
+      }
+    }
+  }
+
+  req.session.flash = { type: 'success', key: 'auth.reset_sent' };
+  res.redirect('/connexion');
+});
+
+// Formulaire de nouveau mot de passe (jeton vérifié).
+router.get('/reinitialiser/:token', (req, res) => {
+  const token = validate.textField(req.params.token, 128);
+  const u = userModel.findByResetToken(token);
+  if (!u || !u.reset_expires || new Date(u.reset_expires).getTime() < Date.now()) {
+    return res.render('pages/forgot-password', { title: 'forgot', error: 'auth.reset_invalid' });
+  }
+  res.render('pages/reset-password', { title: 'reset', token });
+});
+
+router.post('/reinitialiser/:token', (req, res) => {
+  const token = validate.textField(req.params.token, 128);
+  const password = req.body.password || '';
+  const u = userModel.findByResetToken(token);
+  if (!u || !u.reset_expires || new Date(u.reset_expires).getTime() < Date.now()) {
+    return res.render('pages/forgot-password', { title: 'forgot', error: 'auth.reset_invalid' });
+  }
+  if (password.length < 6 || password.length > validate.MAX.password) {
+    return res.render('pages/reset-password', { title: 'reset', error: 'auth.password_short', token });
+  }
+  userModel.resetPassword(u.id, bcrypt.hashSync(password, 10));
+  req.session.flash = { type: 'success', key: 'auth.reset_done' };
+  res.redirect('/connexion');
 });
 
 router.post('/deconnexion', (req, res) => {

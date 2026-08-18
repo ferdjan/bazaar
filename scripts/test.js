@@ -323,6 +323,12 @@ function makeOrder(method, totalDzd) {
   const tlPaid = buildTimeline(o2b);
   ok('timeline payée -> en_attente done, payee current', tlPaid.steps[0].state === 'done' && tlPaid.steps[1].state === 'current');
 
+  // Ordre des étapes selon le mode de paiement.
+  ok('COD : en_attente→expediee→livree→payee',
+    tl4.steps.map((s) => s.key).join(',') === 'en_attente,expediee,livree,payee');
+  ok('en ligne : en_attente→payee→expediee→livree',
+    tlPaid.steps.map((s) => s.key).join(',') === 'en_attente,payee,expediee,livree');
+
   // ---- Tests unitaires : vérification Stripe --------------------------------
   const so = makeOrder('stripe', 1500); // 1500 DZD -> 675 centimes EUR
   const goodSession = { id: 'cs_test_1', payment_status: 'paid', client_reference_id: so.ref, amount_total: 675, currency: 'eur' };
@@ -347,6 +353,39 @@ function makeOrder(method, totalDzd) {
   ok('paypal amount mismatch', paypal.verifyCapture({ ...goodCapture, purchase_units: [{ ...goodCapture.purchase_units[0], amount: { currency_code: 'EUR', value: '9.99' } }] }, po).reason === 'amount_mismatch');
   ok('paypal currency mismatch', paypal.verifyCapture({ ...goodCapture, purchase_units: [{ ...goodCapture.purchase_units[0], amount: { currency_code: 'USD', value: '6.75' } }] }, po).reason === 'currency_mismatch');
   ok('paypal not completed', paypal.verifyCapture({ ...goodCapture, status: 'APPROVED' }, po).reason === 'not_completed');
+
+  // ---- Mot de passe oublié ----------------------------------------------
+  const resetAgent = request.agent(app);
+  res = await resetAgent.get('/mot-de-passe-oublie');
+  ok('GET /mot-de-passe-oublie -> 200', res.status === 200);
+  csrf = extractCsrf(res.text);
+  res = await resetAgent.post('/mot-de-passe-oublie').type('form')
+    .send({ _csrf: csrf, email: 'client@test.com' });
+  ok('POST mot de passe oublié -> 302 (réponse générique)', res.status === 302);
+
+  const resetToken = db.prepare("SELECT reset_token FROM users WHERE email = 'client@test.com'").get().reset_token;
+  ok('jeton de réinitialisation stocké', !!resetToken);
+
+  res = await resetAgent.get('/reinitialiser/' + resetToken);
+  ok('GET /reinitialiser/:token -> 200', res.status === 200);
+  csrf = extractCsrf(res.text);
+  res = await resetAgent.post('/reinitialiser/' + resetToken).type('form')
+    .send({ _csrf: csrf, password: 'nouveau123' });
+  ok('POST réinitialisation -> 302', res.status === 302);
+  ok('jeton consommé (usage unique)',
+    db.prepare("SELECT reset_token FROM users WHERE email = 'client@test.com'").get().reset_token === '');
+
+  // Le nouveau mot de passe fonctionne.
+  const relog = request.agent(app);
+  res = await relog.get('/connexion');
+  csrf = extractCsrf(res.text);
+  res = await relog.post('/connexion').type('form')
+    .send({ _csrf: csrf, email: 'client@test.com', password: 'nouveau123' });
+  ok('connexion avec le nouveau mot de passe -> 302', res.status === 302);
+
+  // Jeton invalide refusé.
+  res = await resetAgent.get('/reinitialiser/mauvais-jeton');
+  ok('jeton invalide -> erreur affichée', res.status === 200 && /invalide/.test(res.text));
 
   console.log('\nTests : ' + passed + ' assertions OK.');
   process.exit(0);
