@@ -40,9 +40,11 @@ CREATE TABLE IF NOT EXISTS orders (
                  CHECK (status IN ('en_attente','payee','expediee','livree','annulee')),
   total_dzd      INTEGER NOT NULL,
   total_eur      TEXT NOT NULL DEFAULT '',
+  delivery_dzd   INTEGER NOT NULL DEFAULT 0,
   payment_method TEXT NOT NULL CHECK (payment_method IN ('stripe','paypal','cod')),
   payment_status TEXT NOT NULL DEFAULT 'pending'
                  CHECK (payment_status IN ('pending','paid','failed')),
+  provider_id    TEXT NOT NULL DEFAULT '',
   nom            TEXT NOT NULL,
   email          TEXT NOT NULL,
   telephone      TEXT NOT NULL,

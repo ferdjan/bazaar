@@ -1,0 +1,25 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+<main class="container narrow">
+  <h1><%= t('order.continue_payment') %></h1>
+
+  <% if (order && order.payment_status === 'paid') { %>
+    <div class="success-box">
+      <h1>✅ <%= t('order.placed') %></h1>
+      <p><%= t('order.thanks') %></p>
+    </div>
+  <% } else { %>
+    <p><%= t('order.ref') %> : <strong><%= order.ref %></strong></p>
+    <p><%= t('order.total') %> : <strong><%= formatDzd(order.total_dzd) %></strong></p>
+    <p><%= t('order.payment') %> : <%= t('pay.' + order.payment_method) %></p>
+    <p class="note"><%= t('checkout.note_eur') %></p>
+    <form method="post" action="/paiement/<%= order.payment_method %>/<%= order.ref %>">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button type="submit" class="btn btn-primary block"><%= t('order.continue_payment') %></button>
+    </form>
+  <% } %>
+
+  <a href="/commande/<%= order.ref %>" class="btn"><%= t('common.details') %></a>
+  <a href="/catalogue" class="btn"><%= t('cart.continue') %></a>
+</main>
+<%- include('../partials/footer') %>

@@ -1,11 +1,19 @@
 'use strict';
 const router = require('express').Router();
+const config = require('../config');
 const product = require('../models/product');
 const { getCart } = require('../services/cart');
 
 router.get('/panier', (req, res) => {
   const cart = getCart(req);
-  res.render('pages/cart', { title: 'cart', items: cart.items, total: cart.total });
+  const delivery = config.deliveryFeeDzd;
+  res.render('pages/cart', {
+    title: 'cart',
+    items: cart.items,
+    subtotal: cart.total,
+    delivery,
+    total: cart.total + delivery,
+  });
 });
 
 router.post('/panier/ajouter', (req, res) => {

@@ -3,6 +3,7 @@ const router = require('express').Router();
 const product = require('../models/product');
 const category = require('../models/category');
 const newsletter = require('../models/newsletter');
+const validate = require('../services/validate');
 
 router.get('/', (req, res) => {
   const products = product.listActive().slice(0, 8);
@@ -12,9 +13,8 @@ router.get('/', (req, res) => {
 });
 
 router.post('/newsletter', (req, res) => {
-  const email = (req.body.email || '').trim().toLowerCase();
-  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  if (!valid) {
+  const email = validate.textField(req.body.email, validate.MAX.email).toLowerCase();
+  if (!validate.isEmail(email)) {
     req.session.flash = { type: 'error', key: 'home.news_invalid' };
     return res.redirect('/');
   }

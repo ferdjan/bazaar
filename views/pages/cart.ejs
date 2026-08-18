@@ -45,8 +45,8 @@
         </tbody>
       </table>
       <aside class="cart-summary">
-        <p><%= t('cart.subtotal') %> : <strong><%= formatDzd(total) %></strong></p>
-        <p><%= t('cart.shipping') %> : <strong><%= t('cart.shipping_free') %></strong></p>
+        <p><%= t('cart.subtotal') %> : <strong><%= formatDzd(subtotal) %></strong></p>
+        <p><%= t('cart.shipping') %> : <strong><%= formatDzd(delivery) %></strong></p>
         <p class="total"><%= t('cart.total_due') %> : <strong><%= formatDzd(total) %></strong></p>
         <a href="/commande" class="btn btn-primary block"><%= t('cart.checkout') %></a>
         <a href="/catalogue" class="btn block"><%= t('cart.continue') %></a>

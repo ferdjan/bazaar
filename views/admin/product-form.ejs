@@ -2,7 +2,7 @@
 <%- include('../partials/admin-nav') %>
 <main class="container narrow">
   <h1><%= product ? t('admin.edit_product') : t('admin.add_product') %></h1>
-  <form method="post" action="<%= product ? '/admin/produits/' + product.id : '/admin/produits/nouveau' %>?_csrf=<%= csrf %>" enctype="multipart/form-data" class="auth-form">
+  <form method="post" action="<%= product ? '/admin/produits/' + product.id : '/admin/produits/nouveau' %>" enctype="multipart/form-data" class="auth-form">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
 
     <label for="name_fr"><%= t('admin.name_fr') %></label>

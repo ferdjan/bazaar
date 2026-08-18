@@ -13,6 +13,8 @@
     </div>
     <% if (order) { %>
       <p><%= t('order.ref') %> : <strong><%= order.ref %></strong></p>
+      <p><%= t('cart.subtotal') %> : <strong><%= formatDzd(order.total_dzd - order.delivery_dzd) %></strong></p>
+      <p><%= t('cart.shipping') %> : <strong><%= formatDzd(order.delivery_dzd) %></strong></p>
       <p><%= t('order.total') %> : <strong><%= formatDzd(order.total_dzd) %></strong></p>
       <p><%= t('order.payment') %> : <%= t('pay.' + order.payment_method) %> — <%= t('pay.' + order.payment_status) %></p>
       <p><%= t('order.status') %> : <%= t('status.' + order.status) %></p>

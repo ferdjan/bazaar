@@ -2,12 +2,13 @@
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
-const { db } = require('./connection');
+const { db, migrate } = require('./connection');
 const config = require('../config');
 
 function initSchema() {
   const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   db.exec(schema);
+  migrate();
 }
 
 // Idempotent : ne crée les données que si les tables sont vides.
@@ -15,6 +16,16 @@ function seed() {
   initSchema();
 
   if (db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'").get().n === 0) {
+    // Refuse de créer un compte admin avec un mot de passe par défaut en
+    // production : aucun identifiant exploitable tel quel ne doit exister.
+    const isProd = process.env.NODE_ENV === 'production';
+    const weakDefault = !process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD === 'admin123';
+    if (isProd && weakDefault) {
+      throw new Error(
+        'Refus de créer un compte admin avec un mot de passe par défaut en production. ' +
+        'Définissez ADMIN_PASSWORD (mot de passe fort) dans .env puis relancez.'
+      );
+    }
     const hash = bcrypt.hashSync(config.adminPassword, 10);
     db.prepare('INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)')
       .run(config.adminEmail, hash, 'Administrateur', 'admin');

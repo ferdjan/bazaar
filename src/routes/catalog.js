@@ -4,8 +4,9 @@ const product = require('../models/product');
 const category = require('../models/category');
 
 router.get('/catalogue', (req, res) => {
-  const activeCat = req.query.categorie ? parseInt(req.query.categorie, 10) : null;
-  const q = (req.query.q || '').trim();
+  const rawCat = (req.query.categorie || '').toString();
+  const activeCat = /^[1-9][0-9]*$/.test(rawCat) ? parseInt(rawCat, 10) : null;
+  const q = (req.query.q || '').toString().trim().slice(0, 200);
   const products = product.listActive({ category: activeCat || undefined, q: q || undefined });
   const categories = category.listAll();
   res.render('pages/catalogue', { title: 'catalogue', products, categories, activeCat, q });

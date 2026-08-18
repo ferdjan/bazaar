@@ -20,6 +20,8 @@
       <% }) %>
     </tbody>
   </table>
+  <p class="line"><%= t('cart.subtotal') %> : <strong><%= formatDzd(order.total_dzd - order.delivery_dzd) %></strong></p>
+  <p class="line"><%= t('cart.shipping') %> : <strong><%= formatDzd(order.delivery_dzd) %></strong></p>
   <p class="total"><%= t('order.total') %> : <strong><%= formatDzd(order.total_dzd) %></strong></p>
 
   <form method="post" action="/admin/commandes/<%= order.ref %>/statut" class="filters">

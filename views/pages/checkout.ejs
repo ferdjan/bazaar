@@ -8,15 +8,15 @@
 
     <h2><%= t('checkout.info') %></h2>
     <label for="nom"><%= t('auth.name') %></label>
-    <input id="nom" type="text" name="nom" value="<%= form ? form.nom : (user ? user.name : '') %>" required>
+    <input id="nom" type="text" name="nom" autocomplete="name" maxlength="100" value="<%= form ? form.nom : (user ? user.name : '') %>" required>
     <label for="email"><%= t('auth.email') %></label>
-    <input id="email" type="email" name="email" value="<%= form ? form.email : (user ? user.email : '') %>" required>
+    <input id="email" type="email" name="email" autocomplete="email" maxlength="254" value="<%= form ? form.email : (user ? user.email : '') %>" required>
     <label for="telephone"><%= t('auth.phone') %></label>
-    <input id="telephone" type="tel" name="telephone" value="<%= form ? form.telephone : '' %>" required>
+    <input id="telephone" type="tel" name="telephone" autocomplete="tel" inputmode="tel" maxlength="20" value="<%= form ? form.telephone : '' %>" required>
     <label for="adresse"><%= t('checkout.address') %></label>
-    <input id="adresse" type="text" name="adresse" value="<%= form ? form.adresse : '' %>" required>
+    <input id="adresse" type="text" name="adresse" autocomplete="street-address" maxlength="500" value="<%= form ? form.adresse : '' %>" required>
     <label for="ville"><%= t('checkout.city') %></label>
-    <input id="ville" type="text" name="ville" value="<%= form ? form.ville : '' %>" required>
+    <input id="ville" type="text" name="ville" autocomplete="address-level2" maxlength="100" value="<%= form ? form.ville : '' %>" required>
 
     <h2><%= t('checkout.payment') %></h2>
     <label class="radio"><input type="radio" name="payment_method" value="cod" <%= (!form || form.payment_method === 'cod') ? 'checked' : '' %>> <%= t('checkout.cod') %></label>
@@ -24,10 +24,12 @@
     <label class="radio"><input type="radio" name="payment_method" value="paypal" <%= (form && form.payment_method === 'paypal') ? 'checked' : '' %>> <%= t('checkout.paypal') %></label>
     <p class="note"><%= t('checkout.note_eur') %></p>
 
-    <h2><%= t('cart.subtotal') %></h2>
+    <h2><%= t('checkout.summary') %></h2>
     <% items.forEach(function(it){ %>
       <p class="line"><%= pname(it.product) %><% if (it.size) { %> (<%= t('product.size') %> <%= it.size %>)<% } %> × <%= it.qty %> — <strong><%= formatDzd(it.lineTotal) %></strong></p>
     <% }) %>
+    <p class="line"><%= t('cart.subtotal') %> : <strong><%= formatDzd(subtotal) %></strong></p>
+    <p class="line"><%= t('cart.shipping') %> : <strong><%= formatDzd(delivery) %></strong></p>
     <p class="total"><%= t('cart.total_due') %> : <strong><%= formatDzd(total) %></strong></p>
 
     <button type="submit" class="btn btn-primary block"><%= t('checkout.place') %></button>

@@ -2,8 +2,10 @@
 const { db } = require('../db/connection');
 const crypto = require('crypto');
 
+// 8 octets aléatoires (16 hex) : l'identifiant public n'est pas une preuve
+// d'identité, mais il doit rester difficilement devinable.
 function generateRef() {
-  return 'CMD-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+  return 'CMD-' + crypto.randomBytes(8).toString('hex').toUpperCase();
 }
 
 function withItems(order) {
@@ -12,27 +14,41 @@ function withItems(order) {
   return order;
 }
 
-// Création atomique : commande + articles + décrément du stock.
+// Création atomique : commande + articles + décrément de stock vérifié.
+// Le stock est décrémenté avec une condition `stock >= quantité` afin de ne
+// JAMAIS masquer une insuffisance (l'ancien MAX(0, stock - ?) tronquait).
 const createTx = db.transaction((data) => {
   const ref = generateRef();
+
+  const decStock = db.prepare(
+    'UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ? AND active = 1'
+  );
+  for (const it of data.items) {
+    if (it.productId == null) continue;
+    const r = decStock.run(it.qty, it.productId, it.qty);
+    if (r.changes !== 1) {
+      const err = new Error('stock insuffisant ou produit indisponible');
+      err.code = 'STOCK_INSUFFICIENT';
+      throw err; // annule toute la transaction
+    }
+  }
+
   const insOrder = db.prepare(`
     INSERT INTO orders
-      (ref, user_id, status, total_dzd, total_eur, payment_method, payment_status,
-       nom, email, telephone, adresse, ville)
+      (ref, user_id, status, total_dzd, total_eur, delivery_dzd, payment_method, payment_status,
+       provider_id, nom, email, telephone, adresse, ville)
     VALUES
-      (@ref, @user_id, @status, @total_dzd, @total_eur, @payment_method, @payment_status,
-       @nom, @email, @telephone, @adresse, @ville)
+      (@ref, @user_id, @status, @total_dzd, @total_eur, @delivery_dzd, @payment_method, @payment_status,
+       @provider_id, @nom, @email, @telephone, @adresse, @ville)
   `);
-  const info = insOrder.run({ ...data.order, ref });
+  const info = insOrder.run({ ...data.order, ref, delivery_dzd: data.order.delivery_dzd || 0 });
   const orderId = info.lastInsertRowid;
 
   const insItem = db.prepare(
     'INSERT INTO order_items (order_id, product_id, name, price_dzd, qty, size) VALUES (?, ?, ?, ?, ?, ?)'
   );
-  const decStock = db.prepare('UPDATE products SET stock = MAX(0, stock - ?) WHERE id = ?');
   for (const it of data.items) {
     insItem.run(orderId, it.productId, it.name, it.priceDzd, it.qty, it.size || '');
-    if (it.productId) decStock.run(it.qty, it.productId);
   }
   return ref;
 });
@@ -48,6 +64,27 @@ function findByRef(ref) {
 
 function findById(id) {
   return withItems(db.prepare('SELECT * FROM orders WHERE id = ?').get(id));
+}
+
+// Lie la commande locale à l'identifiant du fournisseur (session Stripe ou
+// ordre PayPal). Indispensable pour vérifier que le paiement appartient bien
+// à cette commande avant tout changement d'état.
+function setProviderId(ref, providerId) {
+  db.prepare('UPDATE orders SET provider_id = ? WHERE ref = ?').run(providerId || '', ref);
+}
+
+function findByProviderId(providerId) {
+  if (!providerId) return null;
+  return withItems(db.prepare('SELECT * FROM orders WHERE provider_id = ?').get(providerId));
+}
+
+// Passage à "paid/payee" idempotent : ne fait rien si déjà payé. Un rejeu de
+// webhook ou une double confirmation ne produit aucun effet supplémentaire.
+function markPaid(ref) {
+  const info = db.prepare(
+    "UPDATE orders SET payment_status = 'paid', status = 'payee' WHERE ref = ? AND payment_status != 'paid'"
+  ).run(ref);
+  return info.changes > 0;
 }
 
 function listByUser(userId) {
@@ -76,5 +113,6 @@ function stats() {
 
 module.exports = {
   create, findByRef, findById, listByUser, listAll,
+  setProviderId, findByProviderId, markPaid,
   updateStatus, updatePaymentStatus, stats,
 };

@@ -23,6 +23,8 @@
       <% }) %>
     </tbody>
   </table>
+  <p class="line"><%= t('cart.subtotal') %> : <strong><%= formatDzd(order.total_dzd - order.delivery_dzd) %></strong></p>
+  <p class="line"><%= t('cart.shipping') %> : <strong><%= formatDzd(order.delivery_dzd) %></strong></p>
   <p class="total"><%= t('order.total') %> : <strong><%= formatDzd(order.total_dzd) %></strong></p>
   <% if (order.payment_status === 'pending' && (order.payment_method === 'stripe' || order.payment_method === 'paypal')) { %>
     <a href="/paiement/<%= order.payment_method %>/<%= order.ref %>" class="btn btn-primary"><%= t('order.pay_again') %></a>

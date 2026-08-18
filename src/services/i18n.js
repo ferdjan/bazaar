@@ -26,7 +26,7 @@ const strings = {
   'product.description': { fr: 'Description', ar: 'الوصف' },
   'product.size': { fr: 'Taille', ar: 'المقاس' },
   'product.related': { fr: 'Produits similaires', ar: 'منتجات مشابهة' },
-  'product.free_shipping': { fr: 'Livraison gratuite', ar: 'توصيل مجاني' },
+  'product.shipping_flat': { fr: 'Livraison 600 DA', ar: 'التوصيل 600 دج' },
   'product.stock_limited': { fr: 'Stock limité', ar: 'كمية محدودة' },
 
   // Panier
@@ -44,6 +44,10 @@ const strings = {
   'cart.shipping': { fr: 'Livraison', ar: 'التوصيل' },
   'cart.shipping_free': { fr: 'Gratuite', ar: 'مجاني' },
   'cart.total_due': { fr: 'Total à payer', ar: 'المجموع الواجب دفعه' },
+  'cart.invalid': { fr: 'Contenu du panier invalide.', ar: 'محتوى السلة غير صالح.' },
+  'cart.unavailable': { fr: 'Un produit n\'est plus disponible.', ar: 'أحد المنتجات لم يعد متاحاً.' },
+  'cart.invalid_size': { fr: 'Taille invalide pour un produit.', ar: 'مقاس غير صالح لأحد المنتجات.' },
+  'cart.insufficient_stock': { fr: 'Stock insuffisant pour un produit.', ar: 'المخزون غير كافٍ لأحد المنتجات.' },
 
   // Auth
   'auth.name': { fr: 'Nom complet', ar: 'الاسم الكامل' },
@@ -74,6 +78,7 @@ const strings = {
   'checkout.note_eur': { fr: 'Les paiements en ligne sont facturés en EUR (montant converti).', ar: 'تُدفع المدفوعات عبر الإنترنت باليورو (المبلغ محوّل).' },
   'checkout.login_first': { fr: 'Connectez-vous ou remplissez vos informations pour commander.', ar: 'سجّل الدخول أو املأ معلوماتك للطلب.' },
   'checkout.empty': { fr: 'Votre panier est vide.', ar: 'سلتك فارغة.' },
+  'checkout.summary': { fr: 'Récapitulatif', ar: 'ملخص الطلب' },
 
   // Commande / confirmation
   'order.ref': { fr: 'Commande', ar: 'الطلب' },
@@ -140,6 +145,9 @@ const strings = {
   'admin.forbidden': { fr: 'Accès réservé à l\'administrateur.', ar: 'الوصول مخصص للمدير فقط.' },
   'admin.cant_order': { fr: 'Le compte administrateur ne peut pas passer de commandes.', ar: 'حساب المدير لا يمكنه إجراء طلبات.' },
   'admin.back_to_store': { fr: 'Retour à la boutique', ar: 'العودة إلى المتجر' },
+  'admin.upload_invalid': { fr: 'Image invalide (jpg/png/webp uniquement).', ar: 'صورة غير صالحة (jpg/png/webp فقط).' },
+  'admin.upload_error': { fr: 'Erreur d\'upload (fichier trop volumineux ?).', ar: 'خطأ في الرفع (الملف كبير جداً؟).' },
+  'admin.invalid_data': { fr: 'Données invalides. Vérifiez le prix et le stock.', ar: 'بيانات غير صالحة. تحقق من الثمن والمخزون.' },
 
   // Accueil (vitrine)
   'home.hero_cta': { fr: 'Voir les produits', ar: 'تصفّح المنتجات' },
@@ -152,8 +160,8 @@ const strings = {
   'home.r1_d': { fr: '14 jours pour changer d\'avis', ar: '14 يوماً لتغيير رأيك' },
   'home.r2_t': { fr: 'Livraison rapide', ar: 'توصيل سريع' },
   'home.r2_d': { fr: 'Partout en Algérie', ar: 'في جميع أنحاء الجزائر' },
-  'home.r3_t': { fr: 'Livraison gratuite', ar: 'توصيل مجاني' },
-  'home.r3_d': { fr: 'Sur toutes vos commandes', ar: 'على جميع طلباتك' },
+  'home.r3_t': { fr: 'Livraison à domicile', ar: 'توصيل إلى المنزل' },
+  'home.r3_d': { fr: 'Tarif unique 600 DA', ar: 'سعر موحد 600 دج' },
   'home.r4_t': { fr: 'Paiements sécurisés', ar: 'مدفوعات آمنة' },
   'home.r4_d': { fr: 'Carte, PayPal ou à la livraison', ar: 'بطاقة، باي بال أو عند الاستلام' },
   'home.news_title': { fr: 'Restez connecté', ar: 'ابقَ على اتصال' },

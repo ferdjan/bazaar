@@ -1,10 +1,28 @@
 'use strict';
 const router = require('express').Router();
+const config = require('../config');
 const orderModel = require('../models/order');
-const { getCart, clearCart } = require('../services/cart');
+const { getCart, validateCart, clearCart } = require('../services/cart');
 const { dzdToEurString } = require('../services/currency');
+const validate = require('../services/validate');
+const { paymentLimiter } = require('../middleware/rateLimit');
 
-const METHODS = ['cod', 'stripe', 'paypal'];
+// Sous-total + frais de livraison forfaitaires (DELIVERY_FEE_DZD).
+function totals(subtotal) {
+  const delivery = config.deliveryFeeDzd;
+  return { subtotal, delivery, total: subtotal + delivery };
+}
+
+function renderCheckout(res, { items, user, error, form, subtotal }) {
+  res.render('pages/checkout', {
+    title: 'checkout',
+    items,
+    ...totals(subtotal),
+    user,
+    error,
+    form,
+  });
+}
 
 router.get('/commande', (req, res) => {
   if (req.session.user && req.session.user.role === 'admin') {
@@ -13,70 +31,80 @@ router.get('/commande', (req, res) => {
   }
   const cart = getCart(req);
   if (!cart.items.length) return res.redirect('/panier');
-  res.render('pages/checkout', {
-    title: 'checkout',
+  renderCheckout(res, {
     items: cart.items,
-    total: cart.total,
     user: req.session.user || null,
+    error: undefined,
     form: null,
+    subtotal: cart.total,
   });
 });
 
-router.post('/commande', (req, res) => {
+router.post('/commande', paymentLimiter, (req, res, next) => {
   if (req.session.user && req.session.user.role === 'admin') {
     req.session.flash = { type: 'error', key: 'admin.cant_order' };
     return res.redirect('/admin');
   }
+
+  // 1. Validation serveur des champs du formulaire.
+  const v = validate.checkout(req.body);
   const cart = getCart(req);
-  if (!cart.items.length) return res.redirect('/panier');
-
-  const method = req.body.payment_method;
-  if (!METHODS.includes(method)) return res.redirect('/commande');
-
-  const form = {
-    nom: (req.body.nom || '').trim(),
-    email: (req.body.email || '').trim(),
-    telephone: (req.body.telephone || '').trim(),
-    adresse: (req.body.adresse || '').trim(),
-    ville: (req.body.ville || '').trim(),
-    payment_method: method,
-  };
-  if (!form.nom || !form.email || !form.telephone || !form.adresse || !form.ville) {
-    return res.render('pages/checkout', {
-      title: 'checkout',
-      items: cart.items,
-      total: cart.total,
-      user: req.session.user || null,
-      error: 'auth.required',
-      form,
+  if (!v.ok) {
+    return renderCheckout(res, {
+      items: cart.items, user: req.session.user || null,
+      error: v.errorKey, form: v.form, subtotal: cart.total,
     });
   }
 
-  const order = orderModel.create({
-    order: {
-      user_id: (req.session.user && req.session.user.role === 'customer') ? req.session.user.id : null,
-      status: 'en_attente',
-      total_dzd: cart.total,
-      total_eur: dzdToEurString(cart.total),
-      payment_method: method,
-      payment_status: 'pending',
-      nom: form.nom,
-      email: form.email,
-      telephone: form.telephone,
-      adresse: form.adresse,
-      ville: form.ville,
-    },
-    items: cart.items.map((it) => ({
-      productId: it.product.id,
-      name: it.product.name_fr,
-      priceDzd: it.product.price_dzd,
-      qty: it.qty,
-      size: it.size,
-    })),
-  });
+  // 2. Recalcul et validation du panier depuis la base (prix, stock, taille…).
+  const checked = validateCart(req);
+  if (!checked.ok) {
+    return renderCheckout(res, {
+      items: cart.items, user: req.session.user || null,
+      error: checked.errorKey, form: v.form, subtotal: cart.total,
+    });
+  }
+
+  // 3. Création atomique commande + décrément de stock (vérifié côté SQL).
+  const t = totals(checked.total);
+  let order;
+  try {
+    order = orderModel.create({
+      order: {
+        user_id: (req.session.user && req.session.user.role === 'customer') ? req.session.user.id : null,
+        status: 'en_attente',
+        total_dzd: t.total,
+        total_eur: dzdToEurString(t.total),
+        delivery_dzd: t.delivery,
+        payment_method: v.form.payment_method,
+        payment_status: 'pending',
+        provider_id: '',
+        nom: v.form.nom,
+        email: v.form.email,
+        telephone: v.form.telephone,
+        adresse: v.form.adresse,
+        ville: v.form.ville,
+      },
+      items: checked.items.map((it) => ({
+        productId: it.product.id,
+        name: it.product.name_fr,
+        priceDzd: it.product.price_dzd,
+        qty: it.qty,
+        size: it.size,
+      })),
+    });
+  } catch (err) {
+    if (err && err.code === 'STOCK_INSUFFICIENT') {
+      return renderCheckout(res, {
+        items: cart.items, user: req.session.user || null,
+        error: 'cart.insufficient_stock', form: v.form, subtotal: checked.total,
+      });
+    }
+    return next(err);
+  }
 
   clearCart(req);
-  res.redirect('/paiement/' + method + '/' + order.ref);
+  res.redirect('/paiement/' + v.form.payment_method + '/' + order.ref);
 });
 
 module.exports = router;

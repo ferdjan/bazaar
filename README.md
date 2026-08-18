@@ -34,8 +34,10 @@ Le site est servi sur `http://localhost:3000`.
 | E-mail | `admin@example.com` |
 | Mot de passe | `admin123` |
 
-> ⚠️ **Change le mot de passe admin** en production (variable `ADMIN_PASSWORD` dans `.env`
-> avant le premier `npm run seed`, ou en base).
+> ⚠️ **En production**, le démarrage **refuse** de créer un compte admin avec le mot de passe
+> par défaut (`admin123`) : définis `ADMIN_PASSWORD` (mot de passe fort) dans `.env` avant le
+> premier `npm run seed`. En développement uniquement, le couple `admin@example.com` /
+> `admin123` est créé pour simplifier les tests.
 
 ## Configuration (.env)
 
@@ -64,7 +66,7 @@ moment du checkout). Le cash à la livraison reste en DZD.
 ## Tests
 
 ```bash
-npm test   # 20 assertions d'intégration HTTP (supertest, base :memory:)
+npm test   # assertions d'intégration HTTP (supertest, base :memory:)
 ```
 
 ## Structure
@@ -87,11 +89,20 @@ scripts/test.js        tests d'intégration
 
 ## Limites connues (production)
 
-- **Session en mémoire** (`express-session` MemoryStore) : remplacer par un store persistant
-  (`connect-sqlite3` ou Redis) pour un déploiement multi-process.
-- **CSP désactivé** (helmet) pour simplifier l'admin ; à réactiver avec nonces.
-- **Pas de rate-limiting** sur la connexion : ajouter `express-rate-limit` contre le brute-force.
-- **Webhook PayPal non implémenté** : la confirmation se fait par capture au retour ; ajouter le
-  webhook `PAYMENT.CAPTURE.COMPLETED` pour plus de robustesse.
-- **SQLite** : suffisant pour un trafic modéré ; migrer vers PostgreSQL si besoin.
-- **HTTPS** : à assurer via un reverse-proxy (Nginx/Caddy) en production.
+- **SQLite** : suffisant pour un trafic modéré ; migrer vers PostgreSQL si besoin. Le store de
+  session est persisté dans SQLite (`sessions`), adapté à une instance unique.
+- **HTTPS** : à assurer via un reverse-proxy (Nginx/Caddy) en production, avec `TRUST_PROXY=1`
+  et `NODE_ENV=production` (active `secure` sur le cookie de session).
+- **Multi-instance** : SQLite et le store de session SQLite ne conviennent pas à plusieurs
+  processus partageant la même base ; passer alors à PostgreSQL + Redis.
+
+## Sécurité (aperçu)
+
+- Mots de passe hashés (bcrypt), régénération de session après connexion, cookie `secure` en prod.
+- CSRF (comparaison en temps constant), CSP nonce-based (helmet), `nosniff`.
+- Rate limiting sur connexion / inscription / paiement.
+- Paiements vérifiés côté serveur : la commande locale est liée à la session Stripe / ordre PayPal
+  (`provider_id`), avec contrôle du montant, de la devise et de la méthode avant tout passage à
+  « payé ». Confirmations et webhooks sont idempotents.
+- Stock décrémenté atomiquement (`stock >= quantité`) et recalcul du panier depuis la base.
+- Uploads d'images validés par contenu réel (magic bytes), jamais par extension.
