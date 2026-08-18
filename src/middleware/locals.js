@@ -1,6 +1,8 @@
 'use strict';
 const { makeT } = require('../services/i18n');
 const { formatDzd } = require('../services/currency');
+const { formatDate } = require('../services/date');
+const { buildTimeline } = require('../services/orderStatus');
 const category = require('../models/category');
 
 function cartCount(req) {
@@ -15,6 +17,8 @@ function locals(req, res, next) {
   res.locals.dir = lang === 'ar' ? 'rtl' : 'ltr';
   res.locals.t = makeT(lang);
   res.locals.formatDzd = (d) => formatDzd(d, lang);
+  res.locals.formatDate = (d) => formatDate(d, lang);
+  res.locals.orderTimeline = (o) => buildTimeline(o);
   res.locals.L = (fr, ar) => (lang === 'ar' ? (ar || fr) : (fr || ar));
   res.locals.pname = (p) => res.locals.L(p.name_fr, p.name_ar);
   res.locals.pdesc = (p) => res.locals.L(p.description_fr, p.description_ar);

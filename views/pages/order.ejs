@@ -4,7 +4,7 @@
   <h1><%= t('order.details') %> — <%= order.ref %></h1>
   <p><%= t('order.status') %> : <strong><%= t('status.' + order.status) %></strong></p>
   <p><%= t('order.payment') %> : <strong><%= t('pay.' + order.payment_method) %></strong> — <%= t('pay.' + order.payment_status) %></p>
-  <p><%= t('order.date') %> : <%= order.created_at %></p>
+  <p><%= t('order.date') %> : <%= formatDate(order.created_at) %></p>
   <table class="table">
     <thead>
       <tr>
@@ -26,6 +26,9 @@
   <p class="line"><%= t('cart.subtotal') %> : <strong><%= formatDzd(order.total_dzd - order.delivery_dzd) %></strong></p>
   <p class="line"><%= t('cart.shipping') %> : <strong><%= formatDzd(order.delivery_dzd) %></strong></p>
   <p class="total"><%= t('order.total') %> : <strong><%= formatDzd(order.total_dzd) %></strong></p>
+
+  <%- include('../partials/order-tracking') %>
+
   <% if (order.payment_status === 'pending' && (order.payment_method === 'stripe' || order.payment_method === 'paypal')) { %>
     <a href="/paiement/<%= order.payment_method %>/<%= order.ref %>" class="btn btn-primary"><%= t('order.pay_again') %></a>
   <% } %>

@@ -45,6 +45,12 @@ CREATE TABLE IF NOT EXISTS orders (
   payment_status TEXT NOT NULL DEFAULT 'pending'
                  CHECK (payment_status IN ('pending','paid','failed')),
   provider_id    TEXT NOT NULL DEFAULT '',
+  paid_at        TEXT,
+  shipped_at     TEXT,
+  delivered_at   TEXT,
+  cancelled_at   TEXT,
+  carrier        TEXT NOT NULL DEFAULT '',
+  tracking_number TEXT NOT NULL DEFAULT '',
   nom            TEXT NOT NULL,
   email          TEXT NOT NULL,
   telephone      TEXT NOT NULL,

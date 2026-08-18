@@ -1,6 +1,15 @@
 'use strict';
 const { db } = require('../db/connection');
 const crypto = require('crypto');
+const { STATUSES, STEPS } = require('../services/orderStatus');
+
+// Colonne *_at tamponnée lors du passage à chaque étape de progression.
+// `en_attente` n'y figure pas : sa date est `created_at` (date de commande).
+const AT_FIELD = {
+  payee: 'paid_at',
+  expediee: 'shipped_at',
+  livree: 'delivered_at',
+};
 
 // 8 octets aléatoires (16 hex) : l'identifiant public n'est pas une preuve
 // d'identité, mais il doit rester difficilement devinable.
@@ -82,7 +91,7 @@ function findByProviderId(providerId) {
 // webhook ou une double confirmation ne produit aucun effet supplémentaire.
 function markPaid(ref) {
   const info = db.prepare(
-    "UPDATE orders SET payment_status = 'paid', status = 'payee' WHERE ref = ? AND payment_status != 'paid'"
+    "UPDATE orders SET payment_status = 'paid', status = 'payee', paid_at = COALESCE(paid_at, datetime('now')) WHERE ref = ? AND payment_status != 'paid'"
   ).run(ref);
   return info.changes > 0;
 }
@@ -95,8 +104,36 @@ function listAll() {
   return db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all();
 }
 
-function updateStatus(ref, status) {
-  db.prepare('UPDATE orders SET status = ? WHERE ref = ?').run(status, ref);
+// Met à jour le statut en tamponnant la date de l'étape franchie (idempotent
+// via COALESCE) et en effaçant les dates des étapes AVAL lors d'une régression
+// (ex. livree → expediee efface delivered_at). Enregistre aussi transporteur et
+// n° de suivi (déjà nettoyés/tronqués par la route).
+function setStatus(ref, status, opts = {}) {
+  if (!STATUSES.includes(status)) return false;
+  const carrier = opts.carrier || '';
+  const trackingNumber = opts.trackingNumber || '';
+
+  if (status === 'annulee') {
+    db.prepare(
+      "UPDATE orders SET status = 'annulee', cancelled_at = COALESCE(cancelled_at, datetime('now')), carrier = ?, tracking_number = ? WHERE ref = ?"
+    ).run(carrier, trackingNumber, ref);
+    return true;
+  }
+
+  const idx = STEPS.indexOf(status);
+  const parts = [`status = '${status}'`]; // valeur déjà validée par la whitelist
+  if (AT_FIELD[status]) {
+    parts.push(`${AT_FIELD[status]} = COALESCE(${AT_FIELD[status]}, datetime('now'))`);
+  }
+  for (let i = idx + 1; i < STEPS.length; i++) {
+    const f = AT_FIELD[STEPS[i]];
+    if (f) parts.push(`${f} = NULL`);
+  }
+  parts.push('cancelled_at = NULL');
+  parts.push('carrier = ?', 'tracking_number = ?');
+
+  db.prepare(`UPDATE orders SET ${parts.join(', ')} WHERE ref = ?`).run(carrier, trackingNumber, ref);
+  return true;
 }
 
 function updatePaymentStatus(ref, paymentStatus) {
@@ -114,5 +151,5 @@ function stats() {
 module.exports = {
   create, findByRef, findById, listByUser, listAll,
   setProviderId, findByProviderId, markPaid,
-  updateStatus, updatePaymentStatus, stats,
+  setStatus, updatePaymentStatus, stats,
 };

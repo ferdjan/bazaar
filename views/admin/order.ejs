@@ -24,6 +24,8 @@
   <p class="line"><%= t('cart.shipping') %> : <strong><%= formatDzd(order.delivery_dzd) %></strong></p>
   <p class="total"><%= t('order.total') %> : <strong><%= formatDzd(order.total_dzd) %></strong></p>
 
+  <%- include('../partials/order-tracking') %>
+
   <form method="post" action="/admin/commandes/<%= order.ref %>/statut" class="filters">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
     <select name="status">
@@ -31,6 +33,8 @@
         <option value="<%= s %>" <%= order.status === s ? 'selected' : '' %>><%= t('status.' + s) %></option>
       <% }) %>
     </select>
+    <input type="text" name="carrier" placeholder="<%= t('tracking.carrier') %>" value="<%= order.carrier %>">
+    <input type="text" name="tracking_number" placeholder="<%= t('tracking.number') %>" value="<%= order.tracking_number %>">
     <button type="submit" class="btn"><%= t('admin.save') %></button>
   </form>
 </main>

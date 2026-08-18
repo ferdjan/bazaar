@@ -21,7 +21,7 @@
         <% orders.forEach(function(o){ %>
           <tr>
             <td><%= o.ref %></td>
-            <td><%= o.created_at %></td>
+            <td><%= formatDate(o.created_at) %></td>
             <td><%= formatDzd(o.total_dzd) %></td>
             <td><%= t('status.' + o.status) %></td>
             <td><a href="/commande/<%= o.ref %>" class="btn btn-sm"><%= t('common.details') %></a></td>

@@ -18,6 +18,7 @@ const product = require('../src/models/product');
 const stripe = require('../src/services/payment/stripe');
 const paypal = require('../src/services/payment/paypal');
 const validate = require('../src/services/validate');
+const { buildTimeline } = require('../src/services/orderStatus');
 
 seed();
 const app = createApp();
@@ -284,6 +285,43 @@ function makeOrder(method, totalDzd) {
   ok('markPaid -> false (déjà payé, idempotent)', orderModel.markPaid(o2.ref) === false);
   const o2b = orderModel.findByRef(o2.ref);
   ok('statut payé', o2b.payment_status === 'paid' && o2b.status === 'payee');
+  ok('markPaid renseigne paid_at', !!o2b.paid_at);
+
+  // ---- Tests unitaires : suivi de commande (statuts datés + transporteur) ---
+  const o3 = makeOrder('cod', 2000);
+  ok('setStatus statut valide -> true', orderModel.setStatus(o3.ref, 'en_attente') === true);
+  orderModel.setStatus(o3.ref, 'expediee', { carrier: 'Yalidine', trackingNumber: 'ABC123' });
+  let o3b = orderModel.findByRef(o3.ref);
+  ok('expédiée tamponne shipped_at', !!o3b.shipped_at);
+  ok('transporteur + n° de suivi stockés', o3b.carrier === 'Yalidine' && o3b.tracking_number === 'ABC123');
+
+  orderModel.setStatus(o3.ref, 'livree', {});
+  o3b = orderModel.findByRef(o3.ref);
+  ok('livrée tamponne delivered_at', !!o3b.delivered_at);
+
+  // Régression livree -> expediee : delivered_at doit être effacé.
+  orderModel.setStatus(o3.ref, 'expediee', {});
+  o3b = orderModel.findByRef(o3.ref);
+  ok('régression efface delivered_at', o3b.delivered_at === null);
+
+  ok('setStatus statut invalide -> false', orderModel.setStatus(o3.ref, 'inconnu') === false);
+
+  orderModel.setStatus(o3.ref, 'annulee', {});
+  o3b = orderModel.findByRef(o3.ref);
+  ok('annulée tamponne cancelled_at', !!o3b.cancelled_at);
+
+  // Timeline : construction des états done/current/upcoming.
+  const tl = buildTimeline(o3b);
+  ok('timeline annulée -> cancelled + date', tl.cancelled === true && !!tl.cancelledAt);
+
+  const o4 = makeOrder('cod', 1000);
+  const tl4 = buildTimeline(o4);
+  ok('timeline -> 4 étapes', tl4.steps.length === 4);
+  ok('étape 0 current, étape 1 upcoming', tl4.steps[0].state === 'current' && tl4.steps[1].state === 'upcoming');
+  ok('date étape 0 = created_at', tl4.steps[0].date === o4.created_at);
+
+  const tlPaid = buildTimeline(o2b);
+  ok('timeline payée -> en_attente done, payee current', tlPaid.steps[0].state === 'done' && tlPaid.steps[1].state === 'current');
 
   // ---- Tests unitaires : vérification Stripe --------------------------------
   const so = makeOrder('stripe', 1500); // 1500 DZD -> 675 centimes EUR

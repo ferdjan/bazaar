@@ -1,0 +1,39 @@
+<% const tl = orderTimeline(order); %>
+<h2><%= t('tracking.title') %></h2>
+
+<% if (tl.cancelled) { %>
+  <div class="cancelled-banner">
+    <%= t('tracking.cancelled') %><% if (tl.cancelledAt) { %> · <%= formatDate(tl.cancelledAt) %><% } %>
+  </div>
+<% } %>
+
+<ol class="order-stepper">
+  <% tl.steps.forEach(function (s) { %>
+    <li class="stepper-step <%= s.state %>">
+      <%= t('tracking.step_' + s.key) %>
+      <% if (s.state === 'done' || s.state === 'current') { %>
+        <span class="step-date"><%= formatDate(s.date) %></span>
+      <% } %>
+    </li>
+  <% }) %>
+</ol>
+
+<ul class="order-timeline">
+  <% tl.steps.forEach(function (s) { %>
+    <li class="timeline-step <%= s.state %>">
+      <span class="tl-title"><%= t('tracking.step_' + s.key) %></span>
+      <span class="tl-date"><%= s.state === 'upcoming' ? t('tracking.not_yet') : formatDate(s.date) %></span>
+    </li>
+  <% }) %>
+</ul>
+
+<% if (order.carrier || order.tracking_number) { %>
+  <div class="tracking-info">
+    <% if (order.carrier) { %>
+      <div class="row"><span><%= t('tracking.carrier') %></span><strong><%= order.carrier %></strong></div>
+    <% } %>
+    <% if (order.tracking_number) { %>
+      <div class="row"><span><%= t('tracking.number') %></span><strong><%= order.tracking_number %></strong></div>
+    <% } %>
+  </div>
+<% } %>

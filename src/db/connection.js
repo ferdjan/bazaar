@@ -21,6 +21,24 @@ function migrate() {
   if (!cols.includes('delivery_dzd')) {
     db.exec('ALTER TABLE orders ADD COLUMN delivery_dzd INTEGER NOT NULL DEFAULT 0');
   }
+  if (!cols.includes('paid_at')) {
+    db.exec('ALTER TABLE orders ADD COLUMN paid_at TEXT');
+  }
+  if (!cols.includes('shipped_at')) {
+    db.exec('ALTER TABLE orders ADD COLUMN shipped_at TEXT');
+  }
+  if (!cols.includes('delivered_at')) {
+    db.exec('ALTER TABLE orders ADD COLUMN delivered_at TEXT');
+  }
+  if (!cols.includes('cancelled_at')) {
+    db.exec('ALTER TABLE orders ADD COLUMN cancelled_at TEXT');
+  }
+  if (!cols.includes('carrier')) {
+    db.exec("ALTER TABLE orders ADD COLUMN carrier TEXT NOT NULL DEFAULT ''");
+  }
+  if (!cols.includes('tracking_number')) {
+    db.exec("ALTER TABLE orders ADD COLUMN tracking_number TEXT NOT NULL DEFAULT ''");
+  }
 }
 
 module.exports = { db, dbPath, migrate };

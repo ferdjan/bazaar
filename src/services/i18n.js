@@ -109,6 +109,18 @@ const strings = {
   'pay.paid': { fr: 'Payé', ar: 'مدفوع' },
   'pay.failed': { fr: 'Échoué', ar: 'فشل' },
 
+  // Suivi de commande
+  'tracking.title': { fr: 'Suivi de commande', ar: 'تتبع الطلب' },
+  'tracking.step_en_attente': { fr: 'Commande passée', ar: 'تم استلام الطلب' },
+  'tracking.step_payee': { fr: 'Payée', ar: 'مدفوعة' },
+  'tracking.step_expediee': { fr: 'Expédiée', ar: 'تم الشحن' },
+  'tracking.step_livree': { fr: 'Livrée', ar: 'تم التسليم' },
+  'tracking.step_annulee': { fr: 'Annulée', ar: 'ملغاة' },
+  'tracking.carrier': { fr: 'Transporteur', ar: 'الناقل' },
+  'tracking.number': { fr: 'N° de suivi', ar: 'رقم التتبع' },
+  'tracking.not_yet': { fr: 'Pas encore', ar: 'ليس بعد' },
+  'tracking.cancelled': { fr: 'Commande annulée', ar: 'تم إلغاء الطلب' },
+
   // Admin
   'admin.dashboard': { fr: 'Tableau de bord', ar: 'لوحة التحكم' },
   'admin.products': { fr: 'Produits', ar: 'المنتجات' },

@@ -166,8 +166,11 @@ router.get('/commandes/:ref', (req, res) => {
   res.render('admin/order', { title: 'admin', order });
 });
 router.post('/commandes/:ref/statut', (req, res) => {
-  const valid = ['en_attente', 'payee', 'expediee', 'livree', 'annulee'];
-  if (valid.includes(req.body.status)) orderModel.updateStatus(req.params.ref, req.body.status);
+  const status = req.body.status;
+  const carrier = validate.textField(req.body.carrier, 100);
+  const trackingNumber = validate.textField(req.body.tracking_number, 100);
+  orderModel.setStatus(req.params.ref, status, { carrier, trackingNumber });
+  req.session.flash = { type: 'success', key: 'admin.updated_status' };
   res.redirect('/admin/commandes/' + req.params.ref);
 });
 
