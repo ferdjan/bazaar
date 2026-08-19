@@ -49,27 +49,27 @@ function seed() {
         (slug, name_fr, name_ar, description_fr, description_ar, price_dzd, image, stock, sizes, category_id, active)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    const P = (slug, nfr, nar, dfr, dar, price, stock, cat, sizes) =>
-      insProd.run(slug, nfr, nar, dfr, dar, price, '', stock, sizes, cat.id, 1);
+    const P = (slug, nfr, nar, dfr, dar, price, stock, cat, sizes, image = '') =>
+      insProd.run(slug, nfr, nar, dfr, dar, price, image, stock, sizes, cat.id, 1);
 
     // Vêtements
     P('t-shirt-coton', 'T-shirt coton', 'تيشيرت قطن',
       'T-shirt 100% coton, coupe confortable pour tous les jours.',
-      'تيشيرت قطن 100% بقصّة مريحة للاستعمال اليومي.', 1500, 50, vet, 'S,M,L,XL');
+      'تيشيرت قطن 100% بقصّة مريحة للاستعمال اليومي.', 1500, 50, vet, 'S,M,L,XL', '/images/products/t-shirt-coton.jpg');
     P('chemise-oxford', 'Chemise oxford', 'قميص أكسفورد',
       'Chemise en coton oxford, col boutonné, coupe régulière.',
-      'قميص من قطن أكسفورد بياقة بأزرار وقصّة عادية.', 3200, 25, vet, 'S,M,L,XL');
+      'قميص من قطن أكسفورد بياقة بأزرار وقصّة عادية.', 3200, 25, vet, 'S,M,L,XL', '/images/products/chemise-oxford.jpg');
     P('jean-classique', 'Jean classique', 'جينز كلاسيكي',
       'Jean coupe droite en denim robuste.',
-      'جينز بقصّة مستقيمة من قماش الدنيم المتين.', 4500, 30, vet, '38,40,42,44,46');
+      'جينز بقصّة مستقيمة من قماش الدنيم المتين.', 4500, 30, vet, '38,40,42,44,46', '/images/products/jean-classique.jpg');
     P('sweat-capuche', 'Sweat à capuche', 'سويت شيرت بقلنسوة',
       'Sweat à capuche doux et chaud, doublure polaire.',
-      'سويت شيرت بقلنسوة ناعم ودافئ ببطانة صوفية.', 3900, 4, vet, 'S,M,L,XL');
+      'سويت شيرت بقلنسوة ناعم ودافئ ببطانة صوفية.', 3900, 4, vet, 'S,M,L,XL', '/images/products/sweat-capuche.jpg');
 
     // Chaussures
     P('baskets-running', 'Baskets running', 'حذاء رياضي للجري',
       'Baskets légères avec semelle amortissante pour le sport.',
-      'حذاء رياضي خفيف بنعل ماص للصدمات.', 6500, 20, chs, '40,41,42,43,44');
+      'حذاء رياضي خفيف بنعل ماص للصدمات.', 6500, 20, chs, '40,41,42,43,44', '/images/products/baskets-running.jpg');
     P('sandales-cuir', 'Sandales en cuir', 'صندل جلدي',
       'Sandales en cuir véritable, semelle antidérapante.',
       'صندل من الجلد الطبيعي بنعل مقاوم للانزلاق.', 4800, 3, chs, '40,41,42,43,44');
