@@ -5,3 +5,16 @@ data.db-shm
 data.db-wal
 public/uploads/
 *.log
+
+# Clés, certificats et secrets
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Documents financiers / tableurs / rapports (ne jamais versionner)
+*.xlsx
+*.xls
+*.docx
+*.doc
+*.pdf
