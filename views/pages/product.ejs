@@ -4,7 +4,7 @@
   <a href="/catalogue" class="back">← <%= t('common.back') %></a>
   <div class="product-detail">
     <div class="product-img large">
-      <% if (product.image) { %><img src="<%= product.image %>" alt="<%= pname(product) %>"><% } else { %><span class="placeholder">🛍️</span><% } %>
+      <% if (product.image) { %><img src="<%= product.image %>" alt="<%= pname(product) %>"><% } else { %><span class="placeholder" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a2.1 2.1 0 1 0-2.1 2.1c.9 0 1.6.7 1.6 1.6V8"/><path d="m11.5 8-8 5.5A1.8 1.8 0 0 0 4.5 16.8h15a1.8 1.8 0 0 0 1-3.3L12.5 8"/></svg></span><% } %>
     </div>
     <div class="product-info">
       <% if (cat) { %><span class="chip"><%= cname(cat) %></span><% } %>
@@ -35,8 +35,15 @@
               </div>
             <% } %>
           <% } %>
-          <input type="number" name="qty" value="1" min="1" max="<%= product.stock %>" class="qty-input">
-          <button type="submit" class="btn btn-primary"><%= t('product.add') %></button>
+          <div class="qty-stepper">
+            <button type="button" class="qty-btn" data-step="-1" aria-label="-">&minus;</button>
+            <input type="number" name="qty" value="1" min="1" max="<%= product.stock %>" class="qty-input" inputmode="numeric" aria-label="<%= t('cart.qty') %>">
+            <button type="button" class="qty-btn" data-step="1" aria-label="+">&plus;</button>
+          </div>
+          <button type="submit" class="btn btn-primary btn-add">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8h12l-1.2 12.2a1.5 1.5 0 0 1-1.5 1.3H8.7a1.5 1.5 0 0 1-1.5-1.3L6 8Z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg>
+            <%= t('product.add') %>
+          </button>
         </form>
       <% } %>
     </div>
@@ -52,4 +59,5 @@
     </section>
   <% } %>
 </main>
+<script src="/js/product.js" defer></script>
 <%- include('../partials/footer') %>

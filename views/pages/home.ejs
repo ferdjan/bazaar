@@ -3,7 +3,7 @@
 <main>
   <section class="hero">
     <div class="container hero-inner">
-      <span class="hero-badge">✨ <%= t('home.new_arrivals') %></span>
+      <span class="hero-badge"><%= t('home.new_arrivals') %></span>
       <h1><span class="accent">B</span>azaar</h1>
       <p><%= t('brand.tagline') %></p>
       <div>
@@ -18,7 +18,7 @@
       <div class="category-tiles">
         <% categories.forEach(function(c){ %>
           <a href="/catalogue?categorie=<%= c.id %>" class="category-tile">
-            <span class="cat-emoji"><%= c.slug === 'vetements' ? '👕' : (c.slug === 'chaussures' ? '👟' : (c.slug === 'accessoires' ? '👜' : (c.slug === 'electronique' ? '📱' : '🛍️'))) %></span>
+            <span class="cat-emoji"><%= cname(c).charAt(0) %></span>
             <span class="cat-name"><%= cname(c) %></span>
           </a>
         <% }) %>
@@ -40,7 +40,7 @@
     <% if (lowStock.length) { %>
     <section class="section">
       <div class="section-head">
-        <h2 class="section-title"><span class="bar">—</span> 🔥 <%= t('home.hurry') %></h2>
+        <h2 class="section-title"><span class="bar">—</span> <%= t('home.hurry') %></h2>
       </div>
       <div class="product-grid">
         <% lowStock.forEach(function(p){ %>
@@ -54,22 +54,22 @@
   <section class="reassurance">
     <div class="container reassurance-grid">
       <div class="reassure-item">
-        <span class="reassure-icon">↩️</span>
+        <span class="reassure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></span>
         <strong><%= t('home.r1_t') %></strong>
         <span class="muted"><%= t('home.r1_d') %></span>
       </div>
       <div class="reassure-item">
-        <span class="reassure-icon">🚚</span>
+        <span class="reassure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="6" width="12.5" height="9.5" rx="1"/><path d="M14 9.5h4.2L21 12.6v2.9h-7V9.5Z"/><circle cx="6" cy="18.5" r="1.6"/><circle cx="17.5" cy="18.5" r="1.6"/></svg></span>
         <strong><%= t('home.r2_t') %></strong>
         <span class="muted"><%= t('home.r2_d') %></span>
       </div>
       <div class="reassure-item">
-        <span class="reassure-icon">🎁</span>
+        <span class="reassure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-7.2L21 11"/><path d="M5.5 9.8V20h13V9.8"/></svg></span>
         <strong><%= t('home.r3_t') %></strong>
         <span class="muted"><%= t('home.r3_d') %></span>
       </div>
       <div class="reassure-item">
-        <span class="reassure-icon">🔒</span>
+        <span class="reassure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg></span>
         <strong><%= t('home.r4_t') %></strong>
         <span class="muted"><%= t('home.r4_d') %></span>
       </div>

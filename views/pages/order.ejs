@@ -2,7 +2,7 @@
 <%- include('../partials/header') %>
 <main class="container narrow">
   <h1><%= t('order.details') %> — <%= order.ref %></h1>
-  <p><%= t('order.status') %> : <strong><%= t('status.' + order.status) %></strong></p>
+  <p><%= t('order.status') %> : <span class="pill st-<%= order.status %>"><%= t('status.' + order.status) %></span></p>
   <p><%= t('order.payment') %> : <strong><%= t('pay.' + order.payment_method) %></strong> — <%= t('pay.' + order.payment_status) %></p>
   <p><%= t('order.date') %> : <%= formatDate(order.created_at) %></p>
   <table class="table">

@@ -17,7 +17,7 @@
       <p><%= t('cart.shipping') %> : <strong><%= formatDzd(order.delivery_dzd) %></strong></p>
       <p><%= t('order.total') %> : <strong><%= formatDzd(order.total_dzd) %></strong></p>
       <p><%= t('order.payment') %> : <%= t('pay.' + order.payment_method) %> — <%= t('pay.' + order.payment_status) %></p>
-      <p><%= t('order.status') %> : <%= t('status.' + order.status) %></p>
+      <p><%= t('order.status') %> : <span class="pill st-<%= order.status %>"><%= t('status.' + order.status) %></span></p>
       <% if (user) { %><a href="/commande/<%= order.ref %>" class="btn"><%= t('common.details') %></a><% } %>
     <% } %>
   <% } %>

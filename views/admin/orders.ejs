@@ -25,7 +25,7 @@
             <td><%= o.nom %></td>
             <td><%= formatDzd(o.total_dzd) %></td>
             <td><%= t('pay.' + o.payment_method) %></td>
-            <td><%= t('status.' + o.status) %></td>
+            <td><span class="pill st-<%= o.status %>"><%= t('status.' + o.status) %></span></td>
             <td><a href="/admin/commandes/<%= o.ref %>" class="btn btn-sm"><%= t('common.view') %></a></td>
           </tr>
         <% }) %>
