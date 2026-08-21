@@ -119,6 +119,11 @@ const strings = {
 
   // Suivi de commande
   'tracking.title': { fr: 'Suivi de commande', ar: 'تتبع الطلب' },
+  'tracking.form_title': { fr: 'Suivre ma commande', ar: 'تتبع طلبي' },
+  'tracking.intro': { fr: "Saisissez la référence reçue lors de votre commande (CMD-…) et l'e-mail utilisé.", ar: 'أدخل المرجع الذي توصلت به عند الطلب (CMD-…) والبريد الإلكتروني المستعمل.' },
+  'tracking.ref': { fr: 'Référence de commande', ar: 'مرجع الطلب' },
+  'tracking.find': { fr: 'Suivre', ar: 'تتبع' },
+  'tracking.not_found': { fr: 'Aucune commande ne correspond à cette référence et cet e-mail.', ar: 'لا يوجد طلب يطابق هذا المرجع وهذا البريد الإلكتروني.' },
   'tracking.step_en_attente': { fr: 'Commande passée', ar: 'تم استلام الطلب' },
   'tracking.step_payee': { fr: 'Payée', ar: 'مدفوعة' },
   'tracking.step_expediee': { fr: 'Expédiée', ar: 'تم الشحن' },

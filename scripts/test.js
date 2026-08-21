@@ -18,6 +18,7 @@ const product = require('../src/models/product');
 const stripe = require('../src/services/payment/stripe');
 const paypal = require('../src/services/payment/paypal');
 const validate = require('../src/services/validate');
+const mail = require('../src/services/mail');
 const { buildTimeline } = require('../src/services/orderStatus');
 
 seed();
@@ -355,6 +356,10 @@ function makeOrder(method, totalDzd) {
   ok('paypal not completed', paypal.verifyCapture({ ...goodCapture, status: 'APPROVED' }, po).reason === 'not_completed');
 
   // ---- Mot de passe oublié ----------------------------------------------
+  // SMTP non configuré : on intercepte sendMail pour capturer le lien envoyé.
+  let resetLinkText = '';
+  mail.sendMail = async (opts) => { resetLinkText = opts.text; };
+
   const resetAgent = request.agent(app);
   res = await resetAgent.get('/mot-de-passe-oublie');
   ok('GET /mot-de-passe-oublie -> 200', res.status === 200);
@@ -363,8 +368,12 @@ function makeOrder(method, totalDzd) {
     .send({ _csrf: csrf, email: 'client@test.com' });
   ok('POST mot de passe oublié -> 302 (réponse générique)', res.status === 302);
 
-  const resetToken = db.prepare("SELECT reset_token FROM users WHERE email = 'client@test.com'").get().reset_token;
-  ok('jeton de réinitialisation stocké', !!resetToken);
+  // Le jeton brut circule uniquement dans le lien ; la base ne contient que
+  // son empreinte SHA-256.
+  const resetToken = (resetLinkText.match(/\/reinitialiser\/([0-9a-f]+)/) || [])[1] || '';
+  ok('lien de réinitialisation contient un jeton', /^[0-9a-f]{64}$/.test(resetToken));
+  const storedReset = db.prepare("SELECT reset_token FROM users WHERE email = 'client@test.com'").get().reset_token;
+  ok('jeton stocké haché (≠ jeton brut)', storedReset !== resetToken && /^[a-f0-9]{64}$/.test(storedReset));
 
   res = await resetAgent.get('/reinitialiser/' + resetToken);
   ok('GET /reinitialiser/:token -> 200', res.status === 200);
@@ -386,6 +395,101 @@ function makeOrder(method, totalDzd) {
   // Jeton invalide refusé.
   res = await resetAgent.get('/reinitialiser/mauvais-jeton');
   ok('jeton invalide -> erreur affichée', res.status === 200 && /invalide/.test(res.text));
+
+  // ---- Déconnexion des autres sessions après réinitialisation -------------
+  // Une seconde session ouverte pour le même compte.
+  const sessB = request.agent(app);
+  res = await sessB.get('/connexion');
+  csrf = extractCsrf(res.text);
+  res = await sessB.post('/connexion').type('form')
+    .send({ _csrf: csrf, email: 'client@test.com', password: 'nouveau123' });
+  ok('seconde connexion même compte -> 302', res.status === 302);
+
+  // Deuxième cycle de réinitialisation : les sessions ouvertes avant le reset
+  // (relog et sessB) doivent être détruites ; seule la session courante reste.
+  mail.sendMail = async (opts) => { resetLinkText = opts.text; };
+  res = await resetAgent.get('/mot-de-passe-oublie');
+  csrf = extractCsrf(res.text);
+  res = await resetAgent.post('/mot-de-passe-oublie').type('form')
+    .send({ _csrf: csrf, email: 'client@test.com' });
+  ok('second mot de passe oublié -> 302', res.status === 302);
+  const t2 = (resetLinkText.match(/\/reinitialiser\/([0-9a-f]+)/) || [])[1] || '';
+  ok('second lien de réinitialisation émis', /^[0-9a-f]{64}$/.test(t2));
+
+  res = await resetAgent.get('/reinitialiser/' + t2);
+  ok('GET second lien -> 200', res.status === 200);
+  csrf = extractCsrf(res.text);
+  res = await resetAgent.post('/reinitialiser/' + t2).type('form')
+    .send({ _csrf: csrf, password: 'nouveau456' });
+  ok('seconde réinitialisation -> 302', res.status === 302);
+
+  res = await relog.get('/compte');
+  ok('ancienne session A déconnectée après reset -> 302', res.status === 302);
+  res = await sessB.get('/compte');
+  ok('session B déconnectée après reset -> 302', res.status === 302);
+
+  // Le second nouveau mot de passe fonctionne.
+  const relog2 = request.agent(app);
+  res = await relog2.get('/connexion');
+  csrf = extractCsrf(res.text);
+  res = await relog2.post('/connexion').type('form')
+    .send({ _csrf: csrf, email: 'client@test.com', password: 'nouveau456' });
+  ok('connexion avec le second nouveau mot de passe -> 302', res.status === 302);
+
+  // ---- Suivi public de commande (clients invités) --------------------------
+  res = await request(app).get('/suivi');
+  ok('GET /suivi -> 200', res.status === 200);
+
+  const guestOrder = orderModel.create({
+    order: {
+      user_id: null, status: 'en_attente', total_dzd: 1500, total_eur: '6.75',
+      delivery_dzd: 600, payment_method: 'cod', payment_status: 'pending',
+      provider_id: '', nom: 'Invite', email: 'invite@test.com',
+      telephone: '0550123456', adresse: '1 Rue Y', ville: 'Oran',
+    },
+    items: [{ productId: 1, name: 'T-shirt coton', priceDzd: 900, qty: 1, size: 'M' }],
+  });
+
+  const tracker = request.agent(app);
+  res = await tracker.get('/suivi');
+  csrf = extractCsrf(res.text);
+  res = await tracker.post('/suivi').type('form')
+    .send({ _csrf: csrf, ref: guestOrder.ref, email: 'mauvais@test.com' });
+  ok('suivi : e-mail ne correspondant pas -> refusé', res.status === 200 && /ne correspond/.test(res.text));
+
+  res = await tracker.post('/suivi').type('form')
+    .send({ _csrf: csrf, ref: guestOrder.ref.toLowerCase(), email: 'invite@test.com' });
+  ok('suivi : réf insensible à la casse -> commande affichée', res.status === 200 && res.text.includes(guestOrder.ref));
+
+  res = await tracker.post('/suivi').type('form')
+    .send({ _csrf: csrf, ref: 'CMD-0123456789ABCDEF', email: 'invite@test.com' });
+  ok('suivi : référence inconnue -> message générique', res.status === 200 && /ne correspond/.test(res.text));
+
+  res = await request(app).post('/suivi').type('form')
+    .send({ ref: guestOrder.ref, email: 'invite@test.com' });
+  ok('suivi sans CSRF -> 403', res.status === 403);
+
+  // ---- CA : seules les commandes réellement payées comptent ----------------
+  const revBefore = orderModel.stats().revenue;
+  const oPending = makeOrder('cod', 3000); // reste en_attente / non payée
+  ok('CA inchangé tant que la commande est impayée', orderModel.stats().revenue === revBefore);
+  orderModel.markPaid(oPending.ref);
+  ok('CA augmente une fois la commande payée', orderModel.stats().revenue === revBefore + 3000);
+
+  const oCancel = makeOrder('stripe', 2000);
+  orderModel.markPaid(oCancel.ref);
+  orderModel.setStatus(oCancel.ref, 'annulee', {});
+  ok('CA exclut les commandes annulées', orderModel.stats().revenue === revBefore + 3000);
+
+  // ---- Synchronisation payment_status lors des changements de statut -------
+  const oCod = makeOrder('cod', 800);
+  ok('COD en_attente non payée', oCod.payment_status === 'pending');
+  orderModel.setStatus(oCod.ref, 'livree', {});
+  ok('COD livrée ⇒ payment_status paid', orderModel.findByRef(oCod.ref).payment_status === 'paid');
+
+  const oSt = makeOrder('stripe', 900);
+  orderModel.setStatus(oSt.ref, 'en_attente', {});
+  ok('en_attente ne marque jamais payée', orderModel.findByRef(oSt.ref).payment_status === 'pending');
 
   console.log('\nTests : ' + passed + ' assertions OK.');
   process.exit(0);

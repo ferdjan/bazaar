@@ -1,0 +1,16 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+<main class="container narrow">
+  <h1><%= t('tracking.form_title') %></h1>
+  <p class="muted"><%= t('tracking.intro') %></p>
+  <% if (error) { %><div class="flash flash-error"><%= t(error) %></div><% } %>
+  <form method="post" action="/suivi" class="checkout-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label for="ref"><%= t('tracking.ref') %></label>
+    <input id="ref" type="text" name="ref" maxlength="32" placeholder="CMD-XXXXXXXXXXXXXXXX" value="<%= ref %>" required>
+    <label for="email"><%= t('auth.email') %></label>
+    <input id="email" type="email" name="email" autocomplete="email" maxlength="254" required>
+    <button type="submit" class="btn btn-primary block"><%= t('tracking.find') %></button>
+  </form>
+</main>
+<%- include('../partials/footer') %>

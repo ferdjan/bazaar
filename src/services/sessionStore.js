@@ -74,6 +74,18 @@ class SqliteStore extends session.Store {
   }
 }
 
+// Détruit toutes les sessions d'un utilisateur (recherche par le champ JSON
+// `user.id`), sauf éventuellement la session courante (sid exclu). Utilisé
+// après un changement de mot de passe : les autres appareils sont déconnectés.
+function destroyUserSessions(userId, exceptSid) {
+  const info = db.prepare(`
+    DELETE FROM sessions
+    WHERE json_extract(sess, '$.user.id') = ?
+      AND sid != COALESCE(?, '')
+  `).run(userId, exceptSid || '');
+  return info.changes;
+}
+
 // Nettoyage périodique des sessions expirées (ne bloque pas l'arrêt du process).
 function startCleanup(intervalMs = 15 * 60 * 1000) {
   const t = setInterval(clearExpiredSessions, intervalMs);
@@ -81,4 +93,4 @@ function startCleanup(intervalMs = 15 * 60 * 1000) {
   return t;
 }
 
-module.exports = { SqliteStore, clearExpiredSessions, startCleanup };
+module.exports = { SqliteStore, clearExpiredSessions, destroyUserSessions, startCleanup };

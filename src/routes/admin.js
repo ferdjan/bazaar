@@ -54,7 +54,7 @@ router.get('/', (req, res) => {
     productsCount: product.count(),
     lowStock: product.countLowStock(),
     customers: userModel.countCustomers(),
-    recentOrders: orderModel.listAll().slice(0, 10),
+    recentOrders: orderModel.listRecent(10),
   });
 });
 

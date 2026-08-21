@@ -2,6 +2,7 @@
 const router = require('express').Router();
 const config = require('../config');
 const product = require('../models/product');
+const validate = require('../services/validate');
 const { getCart } = require('../services/cart');
 
 router.get('/panier', (req, res) => {
@@ -39,8 +40,9 @@ router.post('/panier/modifier', (req, res) => {
     if (qty <= 0) {
       delete req.session.cart[key];
     } else {
+      // Borne haute alignée sur validate.MAX.qty (99) et le stock réel.
       const p = product.findById(id);
-      req.session.cart[key] = p ? Math.min(p.stock, qty) : qty;
+      req.session.cart[key] = p ? Math.min(p.stock, qty, validate.MAX.qty) : qty;
     }
   }
   res.redirect('/panier');

@@ -104,6 +104,11 @@ function listAll() {
   return db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all();
 }
 
+// Dernières commandes (tableau de bord) : LIMIT côté SQL, pas de slice JS.
+function listRecent(limit = 10) {
+  return db.prepare('SELECT * FROM orders ORDER BY created_at DESC LIMIT ?').all(limit);
+}
+
 // Met à jour le statut en tamponnant la date de l'étape franchie (idempotent
 // via COALESCE) et en effaçant les dates des étapes AVAL lors d'une régression
 // (ex. livree → expediee efface delivered_at). Enregistre aussi transporteur et
@@ -126,6 +131,9 @@ function setStatus(ref, status, opts = {}) {
   const steps = stepsFor(order.payment_method);
   const idx = steps.indexOf(status);
   const parts = [`status = '${status}'`]; // valeur déjà validée par la whitelist
+  // Passer à une étape postérieure à « en_attente » implique que le paiement a
+  // été reçu (ex. COD payé à la livraison) : on synchronise payment_status.
+  if (status !== 'en_attente') parts.push("payment_status = 'paid'");
   if (AT_FIELD[status]) {
     parts.push(`${AT_FIELD[status]} = COALESCE(${AT_FIELD[status]}, datetime('now'))`);
   }
@@ -144,16 +152,19 @@ function updatePaymentStatus(ref, paymentStatus) {
   db.prepare('UPDATE orders SET payment_status = ? WHERE ref = ?').run(paymentStatus, ref);
 }
 
+// Le chiffre d'affaires ne compte que l'argent réellement encaissé :
+// commandes payées et non annulées. Les commandes « en_attente » (paiement
+// pas encore reçu) sont exclues.
 function stats() {
   const totalOrders = db.prepare('SELECT COUNT(*) AS n FROM orders').get().n;
   const revenue = db.prepare(
-    "SELECT COALESCE(SUM(total_dzd), 0) AS n FROM orders WHERE status != 'annulee'"
+    "SELECT COALESCE(SUM(total_dzd), 0) AS n FROM orders WHERE payment_status = 'paid' AND status != 'annulee'"
   ).get().n;
   return { totalOrders, revenue };
 }
 
 module.exports = {
-  create, findByRef, findById, listByUser, listAll,
+  create, findByRef, findById, listByUser, listAll, listRecent,
   setProviderId, findByProviderId, markPaid,
   setStatus, updatePaymentStatus, stats,
 };

@@ -6,6 +6,7 @@ const userModel = require('../models/user');
 const orderModel = require('../models/order');
 const { requireAuth } = require('../middleware/auth');
 const { loginLimiter, registerLimiter, resetLimiter } = require('../middleware/rateLimit');
+const { destroyUserSessions } = require('../services/sessionStore');
 const validate = require('../services/validate');
 const config = require('../config');
 const { logger } = require('../services/logger');
@@ -126,6 +127,10 @@ router.post('/reinitialiser/:token', (req, res) => {
     return res.render('pages/reset-password', { title: 'reset', error: 'auth.password_short', token });
   }
   userModel.resetPassword(u.id, bcrypt.hashSync(password, 10));
+  // Déconnecte les autres appareils : toute session de cet utilisateur autre
+  // que la session courante est détruite (vol d'ancien mot de passe ⇒ accès
+  // persistant impossible).
+  destroyUserSessions(u.id, req.sessionID);
   req.session.flash = { type: 'success', key: 'auth.reset_done' };
   res.redirect('/connexion');
 });
