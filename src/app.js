@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const config = require('./config');
 const { locals } = require('./middleware/locals');
@@ -21,6 +22,8 @@ function createApp() {
   app.set('views', path.join(__dirname, '..', 'views'));
 
   app.use(requestLogger);
+  // Compression gzip/brotli des réponses texte (HTML, CSS, JSON).
+  app.use(compression());
 
   // Nonce CSP (disponible pour d'éventuels scripts inline futurs).
   app.use((req, res, next) => {

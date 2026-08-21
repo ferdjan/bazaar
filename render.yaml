@@ -1,0 +1,67 @@
+# Blueprint Render — déploie Bazaar en un clic depuis GitHub.
+# Sur le dashboard : New + → Blueprint → choisir ce dépôt.
+services:
+  - type: web
+    name: bazaar
+    runtime: node
+    plan: free
+    healthCheckPath: /
+    buildCommand: npm ci --omit=dev
+    startCommand: node src/server.js
+    envVars:
+      # Version de Node imposée (better-sqlite3 et fetch nécessitent Node ≥ 20)
+      - key: NODE_VERSION
+        value: 22.14.0
+      - key: NODE_ENV
+        value: production
+      # Obligatoire derrière le proxy Render (IP réelles pour rate limiting)
+      - key: TRUST_PROXY
+        value: "1"
+      # Secret de session généré automatiquement par Render
+      - key: SESSION_SECRET
+        generateValue: true
+      # ⚠️ À REMPLIR dans le dashboard : mot de passe admin FORT.
+      # Le serveur REFUSE de démarrer en production avec un mot de passe vide
+      # ou « admin123 » (mesure anti-compromisse du compte admin).
+      - key: ADMIN_PASSWORD
+        sync: false
+      # À remplir après le premier déploiement :
+      # l'URL finale https://bazaar-xxxx.onrender.com (liens de paiement,
+      # e-mails de réinitialisation, webhooks).
+      - key: BASE_URL
+        sync: false
+      - key: ADMIN_EMAIL
+        value: admin@example.com
+      - key: DZD_TO_EUR_RATE
+        value: "0.0045"
+      - key: DELIVERY_FEE_DZD
+        value: "600"
+      # Paiements en ligne (optionnel : laisser vide = seul le paiement à la
+      # livraison fonctionne).
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PUBLIC_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_MODE
+        value: sandbox
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      # SMTP optionnel (e-mails de réinitialisation)
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "0"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
