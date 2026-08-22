@@ -8,7 +8,8 @@
   <p><%= t('auth.email') %> : <%= order.email %></p>
   <p><%= t('auth.phone') %> : <%= order.telephone %></p>
   <p><%= t('checkout.address') %> : <%= order.adresse %>, <%= order.ville %></p>
-  <p><%= t('order.payment') %> : <%= t('pay.' + order.payment_method) %> — <%= t('pay.' + order.payment_status) %></p>
+  <p><%= t('order.payment') %> : <%= t('pay.' + order.payment_method) %> — <%= order.refund_dzd > 0 ? t('pay.refunded') : t('pay.' + order.payment_status) %></p>
+  <% if (order.delivery_status !== 'pending') { %><p><%= t('order.delivery') %> : <strong><%= t('delivery.' + order.delivery_status) %></strong></p><% } %>
 
   <table class="table">
     <thead>

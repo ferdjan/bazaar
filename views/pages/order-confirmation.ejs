@@ -16,7 +16,8 @@
       <p><%= t('cart.subtotal') %> : <strong><%= formatDzd(order.total_dzd - order.delivery_dzd) %></strong></p>
       <p><%= t('cart.shipping') %> : <strong><%= formatDzd(order.delivery_dzd) %></strong></p>
       <p><%= t('order.total') %> : <strong><%= formatDzd(order.total_dzd) %></strong></p>
-      <p><%= t('order.payment') %> : <%= t('pay.' + order.payment_method) %> — <%= t('pay.' + order.payment_status) %></p>
+       <p><%= t('order.payment') %> : <%= t('pay.' + order.payment_method) %> — <%= order.refund_dzd > 0 ? t('pay.refunded') : t('pay.' + order.payment_status) %></p>
+       <% if (order.delivery_status !== 'pending') { %><p><%= t('order.delivery') %> : <strong><%= t('delivery.' + order.delivery_status) %></strong></p><% } %>
       <p><%= t('order.status') %> : <span class="pill st-<%= order.status %>"><%= t('status.' + order.status) %></span></p>
       <% if (user) { %><a href="/commande/<%= order.ref %>" class="btn"><%= t('common.details') %></a><% } %>
     <% } %>

@@ -233,9 +233,9 @@ function makeOrder(method, totalDzd) {
   csrf = extractCsrf(res.text);
   await admin.post('/admin/commandes/' + ref + '/action').type('form').send({ _csrf: csrf, action: 'pay' });
   actionOrder = orderModel.findByRef(ref);
-  ok('action payer COD enregistre l’encaissement', actionOrder.status === 'payee' && actionOrder.payment_status === 'paid');
+  ok('admin ne peut pas enregistrer un paiement COD', actionOrder.status === 'livree' && actionOrder.payment_status === 'pending');
   const actionHistory = orderModel.listHistory(ref);
-  ok('historique conserve les trois actions admin', actionHistory.length === 3);
+  ok('historique conserve les deux actions admin', actionHistory.length === 2);
   ok('historique identifie l’administrateur', actionHistory.every((event) => event.actor_name === 'Administrateur'));
 
   // ---- Étiquette QR et scan vendeur ---------------------------------------
@@ -248,7 +248,7 @@ function makeOrder(method, totalDzd) {
   res = await request(app).get('/scan/' + secondLabelToken);
   ok('scan sans authentification refusé', res.status === 302);
   res = await admin.get('/scan/' + secondLabelToken);
-  ok('admin ouvre le scan QR', res.status === 200 && res.text.includes(codOrderDb.ref));
+  ok('admin ouvre le scan QR en lecture seule', res.status === 200 && res.text.includes(codOrderDb.ref) && /Consultation uniquement/.test(res.text));
   res = await admin.get('/admin/commandes/' + codOrderDb.ref);
   csrf = extractCsrf(res.text);
   res = await admin.post('/admin/commandes/' + codOrderDb.ref + '/etiquette').type('form').send({ _csrf: csrf });
@@ -273,6 +273,10 @@ function makeOrder(method, totalDzd) {
   ok('vendeur ouvre la page scan sans commande', res.status === 200 && /Scan vendeur/.test(res.text));
   res = await seller.get('/scan/' + sellerLabelToken);
   ok('vendeur ouvre un QR', res.status === 200 && res.text.includes(codOrderDb.ref));
+  csrf = extractCsrf(res.text);
+  res = await seller.post('/scan/payer').type('form').send({ _csrf: csrf, token: sellerLabelToken });
+  ok('vendeur confirme le paiement COD via QR', res.status === 302 && orderModel.findByRef(codOrderDb.ref).payment_status === 'paid');
+  ok('double confirmation vendeur refusée', orderModel.confirmCodPayment(codOrderDb.ref, 2, 'seller') === false);
   res = await seller.get('/admin');
   ok('vendeur ne peut pas ouvrir admin', res.status === 403);
 
@@ -286,8 +290,13 @@ function makeOrder(method, totalDzd) {
     items: [{ productId: 10, name: returnProduct.name_fr, priceDzd: 1200, qty: 1, size: 'Taille unique' }],
   }).ref;
   ok('stock réservé pour le retour', product.findById(10).stock === 2);
+  orderModel.setStatus(returnRef, 'expediee', {});
+  orderModel.setStatus(returnRef, 'livree', {});
+  const sellerId = db.prepare("SELECT id FROM users WHERE role = 'seller'").get().id;
+  ok('vendeur encaisse la commande avant retour', orderModel.confirmCodPayment(returnRef, sellerId, 'seller') === true);
   ok('incident retour enregistré', orderModel.recordDeliveryIssue(returnRef, 'returned', 1) === true);
   ok('retour revendable réintègre le stock', orderModel.returnReceived(returnRef, 'resellable', 1) === true && product.findById(10).stock === 3);
+  ok('retour payé affiche un remboursement', orderModel.findByRef(returnRef).refund_dzd === 1200);
   ok('retour traité une seule fois', orderModel.returnReceived(returnRef, 'resellable', 1) === false && product.findById(10).stock === 3);
 
   // L'admin peut consulter la commande d'un client
@@ -577,8 +586,7 @@ function makeOrder(method, totalDzd) {
   ok('COD en_attente non payée', oCod.payment_status === 'pending');
   orderModel.setStatus(oCod.ref, 'livree', {});
   ok('COD livrée reste pending avant action payer', orderModel.findByRef(oCod.ref).payment_status === 'pending');
-  orderModel.actionFor(oCod.ref, 'pay');
-  ok('action payer COD ⇒ payment_status paid', orderModel.findByRef(oCod.ref).payment_status === 'paid');
+   ok('admin ne peut pas payer une COD', orderModel.actionFor(oCod.ref, 'pay', { actorRole: 'admin' }) === false);
 
   const oSt = makeOrder('stripe', 900);
   orderModel.setStatus(oSt.ref, 'en_attente', {});

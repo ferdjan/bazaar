@@ -200,6 +200,7 @@ router.post('/commandes/:ref/action', (req, res) => {
   const trackingNumber = validate.textField(req.body.tracking_number, 100);
   const ok = orderModel.actionFor(req.params.ref, action, {
     actorId: req.session.user.id,
+    actorRole: req.session.user.role,
     carrier,
     trackingNumber,
   });
@@ -214,6 +215,7 @@ router.post('/commandes/:ref/statut', (req, res) => {
   const trackingNumber = validate.textField(req.body.tracking_number, 100);
   const ok = orderModel.setStatus(req.params.ref, status, {
     actorId: req.session.user.id,
+    actorRole: req.session.user.role,
     carrier,
     trackingNumber,
     action: 'manual_status_update',

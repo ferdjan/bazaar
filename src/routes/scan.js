@@ -38,7 +38,7 @@ router.post('/scan/payer', requireSeller, (req, res) => {
   const token = typeof req.body.token === 'string' ? req.body.token.toLowerCase() : '';
   const label = shipmentLabel.findByToken(token);
   if (!label) return renderScan(req, res, token, 'scan.invalid');
-  const ok = orderModel.actionFor(label.ref, 'pay', { actorId: req.session.user.id });
+  const ok = orderModel.confirmCodPayment(label.ref, req.session.user.id, req.session.user.role);
   if (!ok) return renderScan(req, res, token, 'scan.not_payable');
   req.session.flash = { type: 'success', key: 'scan.payment_done' };
   return res.redirect('/scan/' + token);

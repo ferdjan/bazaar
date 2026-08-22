@@ -22,12 +22,16 @@
       <p><strong><%= t('checkout.address') %> :</strong> <%= order.adresse %>, <%= order.ville %></p>
       <p><strong><%= t('order.total') %> :</strong> <%= formatDzd(order.total_dzd) %></p>
       <p><strong><%= t('order.status') %> :</strong> <%= t('status.' + order.status) %></p>
-      <% if (order.status === 'livree' && order.payment_method === 'cod' && order.payment_status !== 'paid') { %>
+      <p><strong><%= t('order.payment') %> :</strong> <%= order.refund_dzd > 0 ? t('pay.refunded') : t('pay.' + order.payment_status) %></p>
+      <% if (order.delivery_status !== 'pending') { %><p><strong><%= t('order.delivery') %> :</strong> <%= t('delivery.' + order.delivery_status) %></p><% } %>
+      <% if (isSeller && order.status === 'livree' && order.payment_method === 'cod' && order.payment_status === 'pending' && order.refund_dzd === 0) { %>
         <form method="post" action="/scan/payer">
           <input type="hidden" name="_csrf" value="<%= csrf %>">
           <input type="hidden" name="token" value="<%= token %>">
           <button class="btn btn-primary block" type="submit"><%= t('scan.confirm_payment') %></button>
         </form>
+      <% } else if (isAdmin) { %>
+        <div class="flash flash-error"><%= t('scan.admin_read_only') %></div>
       <% } else { %>
         <div class="flash flash-error"><%= t('scan.not_payable') %></div>
       <% } %>

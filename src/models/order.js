@@ -173,6 +173,29 @@ function markPaid(ref) {
   return info.changes > 0;
 }
 
+// Encaissement COD unique : seul un vendeur authentifié peut exécuter cette
+// transition, et la condition SQL empêche les doubles confirmations.
+function confirmCodPayment(ref, actorId, actorRole) {
+  if (actorRole !== 'seller') return false;
+  const tx = db.transaction(() => {
+    const order = db.prepare(
+      "SELECT id, status, payment_method, payment_status FROM orders WHERE ref = ?"
+    ).get(ref);
+    if (!order || order.payment_method !== 'cod' || order.status !== 'livree' || order.payment_status !== 'pending') {
+      return false;
+    }
+    const changed = db.prepare(`
+      UPDATE orders
+      SET status = 'payee', payment_status = 'paid', paid_at = COALESCE(paid_at, datetime('now'))
+      WHERE id = ? AND status = 'livree' AND payment_method = 'cod' AND payment_status = 'pending'
+    `).run(order.id);
+    if (changed.changes !== 1) return false;
+    recordHistory(order.id, 'livree', 'payee', { actorId, action: 'pay' });
+    return true;
+  });
+  return tx();
+}
+
 function listByUser(userId) {
   return db.prepare('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC').all(userId);
 }
@@ -221,6 +244,7 @@ function setStatus(ref, status, opts = {}) {
   if (!order) return false;
 
   const steps = stepsFor(order.payment_method);
+  if (status === 'payee' && order.payment_method === 'cod' && opts.actorRole !== 'seller') return false;
   const idx = steps.indexOf(status);
   const parts = [`status = '${status}'`]; // valeur déjà validée par la whitelist
   // Seul le statut métier « payée » confirme un encaissement. Une expédition
@@ -251,7 +275,7 @@ function actionFor(ref, action, opts = {}) {
   const next = {
     // Les paiements Stripe/PayPal doivent être confirmés par leur fournisseur,
     // jamais par une action admin locale.
-    pay: order.status === 'livree' && order.payment_method === 'cod' ? 'payee' : null,
+    pay: null,
     ship: order.status === 'payee' || (order.status === 'en_attente' && order.payment_method === 'cod') ? 'expediee' : null,
     deliver: order.status === 'expediee' ? 'livree' : null,
      cancel: order.status === 'annulee' ? null : 'annulee',
@@ -260,7 +284,7 @@ function actionFor(ref, action, opts = {}) {
   const tracking = action === 'ship'
     ? opts
     : { ...opts, carrier: order.carrier, trackingNumber: order.tracking_number };
-  const changed = setStatus(ref, next, { ...tracking, action });
+  const changed = setStatus(ref, next, { ...tracking, actorRole: opts.actorRole, action });
   if (changed && action === 'cancel' && order.status === 'en_attente') {
     releaseStock(ref, opts.actorId, 'order_cancelled');
   }
@@ -285,6 +309,6 @@ function stats() {
 module.exports = {
   create, findByRef, findById, listHistory, listByUser, listAll, listRecent, listRecentByStatus, statusCounts,
   setProviderId, findByProviderId, markPaid,
-  setStatus, actionFor, updatePaymentStatus, stats,
+  setStatus, actionFor, confirmCodPayment, updatePaymentStatus, stats,
   releaseStock, recordDeliveryIssue, returnReceived,
 };
