@@ -12,6 +12,16 @@ function renderScan(req, res, token, error = null) {
 }
 
 // Le QR ouvre directement cette page. La validation métier reste côté serveur.
+router.get('/scan', requireSeller, (req, res) => {
+  return res.render('pages/scan', {
+    title: 'scan.title',
+    token: '',
+    label: null,
+    order: null,
+    error: null,
+  });
+});
+
 router.get('/scan/:token([a-fA-F0-9]{64})', requireSeller, (req, res) => {
   return renderScan(req, res, req.params.token.toLowerCase());
 });

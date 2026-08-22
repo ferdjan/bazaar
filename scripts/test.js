@@ -269,6 +269,8 @@ function makeOrder(method, totalDzd) {
     _csrf: csrf, email: 'seller@test.com', password: 'seller123',
   });
   ok('vendeur se connecte et arrive au scan', res.status === 302 && res.headers.location === '/scan');
+  res = await seller.get('/scan');
+  ok('vendeur ouvre la page scan sans commande', res.status === 200 && /Scan vendeur/.test(res.text));
   res = await seller.get('/scan/' + sellerLabelToken);
   ok('vendeur ouvre un QR', res.status === 200 && res.text.includes(codOrderDb.ref));
   res = await seller.get('/admin');
