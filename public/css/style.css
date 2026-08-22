@@ -749,6 +749,26 @@ label { display: block; margin: 16px 0 6px; font-weight: 600; font-size: 0.82rem
 .stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
 .row-between { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .actions { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+.status-filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 8px; }
+.status-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.status-filter strong { color: var(--text); font-size: 0.85rem; }
+.status-filter:hover, .status-filter.active { border-color: var(--gold); color: var(--gold-light); background: rgba(201, 162, 39, 0.08); }
+.status-filter.active strong { color: var(--gold-light); }
+.filter-summary { margin: 0 0 12px; color: var(--muted); font-size: 0.85rem; }
+.admin-actions, .admin-history { margin-top: 30px; }
+.admin-actions .actions { flex-wrap: wrap; }
+.action-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.action-form input { width: 150px; margin: 0; }
 
 /* --------------------------------------------------------------------------
    Divers
@@ -1090,4 +1110,6 @@ label { display: block; margin: 16px 0 6px; font-weight: 600; font-size: 0.82rem
   .newsletter-form { flex-direction: column; }
   .section { margin: 44px 0; }
   .lang-switch { padding: 6px 10px; }
+  .status-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .status-filter { justify-content: space-between; min-width: 0; }
 }

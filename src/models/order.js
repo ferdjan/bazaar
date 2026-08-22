@@ -75,6 +75,33 @@ function findById(id) {
   return withItems(db.prepare('SELECT * FROM orders WHERE id = ?').get(id));
 }
 
+function listHistory(ref) {
+  return db.prepare(`
+    SELECT h.*, u.name AS actor_name
+    FROM order_status_history h
+    JOIN orders o ON o.id = h.order_id
+    LEFT JOIN users u ON u.id = h.actor_id
+    WHERE o.ref = ?
+    ORDER BY h.created_at DESC, h.id DESC
+  `).all(ref);
+}
+
+function recordHistory(orderId, fromStatus, toStatus, opts = {}) {
+  db.prepare(`
+    INSERT INTO order_status_history
+      (order_id, actor_id, from_status, to_status, action, carrier, tracking_number)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    orderId,
+    opts.actorId || null,
+    fromStatus || null,
+    toStatus,
+    opts.action || 'status_update',
+    opts.carrier || '',
+    opts.trackingNumber || ''
+  );
+}
+
 // Lie la commande locale à l'identifiant du fournisseur (session Stripe ou
 // ordre PayPal). Indispensable pour vérifier que le paiement appartient bien
 // à cette commande avant tout changement d'état.
@@ -109,6 +136,18 @@ function listRecent(limit = 10) {
   return db.prepare('SELECT * FROM orders ORDER BY created_at DESC LIMIT ?').all(limit);
 }
 
+function listRecentByStatus(status, limit = 10) {
+  return db.prepare('SELECT * FROM orders WHERE status = ? ORDER BY created_at DESC LIMIT ?').all(status, limit);
+}
+
+function statusCounts() {
+  const counts = Object.fromEntries(STATUSES.map((status) => [status, 0]));
+  for (const row of db.prepare('SELECT status, COUNT(*) AS count FROM orders GROUP BY status').all()) {
+    counts[row.status] = row.count;
+  }
+  return counts;
+}
+
 // Met à jour le statut en tamponnant la date de l'étape franchie (idempotent
 // via COALESCE) et en effaçant les dates des étapes AVAL lors d'une régression
 // (ex. livree → expediee efface delivered_at). Enregistre aussi transporteur et
@@ -119,21 +158,24 @@ function setStatus(ref, status, opts = {}) {
   const trackingNumber = opts.trackingNumber || '';
 
   if (status === 'annulee') {
+    const order = db.prepare('SELECT id, status FROM orders WHERE ref = ?').get(ref);
+    if (!order || order.status === 'annulee') return false;
     db.prepare(
       "UPDATE orders SET status = 'annulee', cancelled_at = COALESCE(cancelled_at, datetime('now')), carrier = ?, tracking_number = ? WHERE ref = ?"
     ).run(carrier, trackingNumber, ref);
+    recordHistory(order.id, order.status, status, { ...opts, carrier, trackingNumber });
     return true;
   }
 
-  const order = db.prepare('SELECT payment_method FROM orders WHERE ref = ?').get(ref);
+  const order = db.prepare('SELECT id, status, payment_method FROM orders WHERE ref = ?').get(ref);
   if (!order) return false;
 
   const steps = stepsFor(order.payment_method);
   const idx = steps.indexOf(status);
   const parts = [`status = '${status}'`]; // valeur déjà validée par la whitelist
-  // Passer à une étape postérieure à « en_attente » implique que le paiement a
-  // été reçu (ex. COD payé à la livraison) : on synchronise payment_status.
-  if (status !== 'en_attente') parts.push("payment_status = 'paid'");
+  // Seul le statut métier « payée » confirme un encaissement. Une expédition
+  // ou une livraison COD ne doit pas gonfler le chiffre d'affaires.
+  if (status === 'payee') parts.push("payment_status = 'paid'");
   if (AT_FIELD[status]) {
     parts.push(`${AT_FIELD[status]} = COALESCE(${AT_FIELD[status]}, datetime('now'))`);
   }
@@ -145,7 +187,30 @@ function setStatus(ref, status, opts = {}) {
   parts.push('carrier = ?', 'tracking_number = ?');
 
   db.prepare(`UPDATE orders SET ${parts.join(', ')} WHERE ref = ?`).run(carrier, trackingNumber, ref);
+  if (order.status !== status || carrier || trackingNumber) {
+    recordHistory(order.id, order.status, status, { ...opts, carrier, trackingNumber });
+  }
   return true;
+}
+
+function actionFor(ref, action, opts = {}) {
+  const order = db.prepare(
+    'SELECT status, payment_method, carrier, tracking_number FROM orders WHERE ref = ?'
+  ).get(ref);
+  if (!order) return false;
+  const next = {
+    // Les paiements Stripe/PayPal doivent être confirmés par leur fournisseur,
+    // jamais par une action admin locale.
+    pay: order.status === 'livree' && order.payment_method === 'cod' ? 'payee' : null,
+    ship: order.status === 'payee' || (order.status === 'en_attente' && order.payment_method === 'cod') ? 'expediee' : null,
+    deliver: order.status === 'expediee' ? 'livree' : null,
+    cancel: order.status === 'annulee' ? null : 'annulee',
+  }[action];
+  if (!next) return false;
+  const tracking = action === 'ship'
+    ? opts
+    : { ...opts, carrier: order.carrier, trackingNumber: order.tracking_number };
+  return setStatus(ref, next, { ...tracking, action });
 }
 
 function updatePaymentStatus(ref, paymentStatus) {
@@ -164,7 +229,7 @@ function stats() {
 }
 
 module.exports = {
-  create, findByRef, findById, listByUser, listAll, listRecent,
+  create, findByRef, findById, listHistory, listByUser, listAll, listRecent, listRecentByStatus, statusCounts,
   setProviderId, findByProviderId, markPaid,
-  setStatus, updatePaymentStatus, stats,
+  setStatus, actionFor, updatePaymentStatus, stats,
 };

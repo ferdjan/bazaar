@@ -76,7 +76,8 @@ function createApp() {
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 1000 * 60 * 60 * 24 * 30,
+      // Une session admin ne doit pas rester active pendant plusieurs semaines.
+      maxAge: 1000 * 60 * 60 * 24,
     },
   }));
 

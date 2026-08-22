@@ -10,6 +10,7 @@ const { assertCsrf } = require('../middleware/csrf');
 const { slugify } = require('../services/slugify');
 const validate = require('../services/validate');
 const image = require('../services/image');
+const { STATUSES } = require('../services/orderStatus');
 
 router.use(requireAdmin);
 
@@ -17,7 +18,14 @@ router.use(requireAdmin);
 // écriture. L'extension du nom de fichier n'est JAMAIS une preuve.
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    files: 1,
+    fields: 30,
+    parts: 32,
+    fieldNameSize: 100,
+    headerPairs: 100,
+  },
 });
 
 function uploadSingle(field) {
@@ -47,6 +55,8 @@ function buildProductData(v, imagePath) {
 // Tableau de bord
 router.get('/', (req, res) => {
   const { totalOrders, revenue } = orderModel.stats();
+  const requestedStatus = typeof req.query.status === 'string' ? req.query.status : 'all';
+  const status = requestedStatus === 'all' || STATUSES.includes(requestedStatus) ? requestedStatus : 'all';
   res.render('admin/dashboard', {
     title: 'admin',
     totalOrders,
@@ -54,7 +64,10 @@ router.get('/', (req, res) => {
     productsCount: product.count(),
     lowStock: product.countLowStock(),
     customers: userModel.countCustomers(),
-    recentOrders: orderModel.listRecent(10),
+    recentOrders: status === 'all' ? orderModel.listRecent(10) : orderModel.listRecentByStatus(status, 10),
+    status,
+    statusCounts: orderModel.statusCounts(),
+    statuses: STATUSES,
   });
 });
 
@@ -163,14 +176,35 @@ router.get('/commandes', (req, res) => {
 router.get('/commandes/:ref', (req, res) => {
   const order = orderModel.findByRef(req.params.ref);
   if (!order) return res.redirect('/admin/commandes');
-  res.render('admin/order', { title: 'admin', order });
+  res.render('admin/order', { title: 'admin', order, history: orderModel.listHistory(order.ref) });
+});
+router.post('/commandes/:ref/action', (req, res) => {
+  const action = validate.textField(req.body.action, 20);
+  const carrier = validate.textField(req.body.carrier, 100);
+  const trackingNumber = validate.textField(req.body.tracking_number, 100);
+  const ok = orderModel.actionFor(req.params.ref, action, {
+    actorId: req.session.user.id,
+    carrier,
+    trackingNumber,
+  });
+  req.session.flash = ok
+    ? { type: 'success', key: 'admin.action_done' }
+    : { type: 'error', key: 'admin.action_invalid' };
+  res.redirect('/admin/commandes/' + req.params.ref);
 });
 router.post('/commandes/:ref/statut', (req, res) => {
   const status = req.body.status;
   const carrier = validate.textField(req.body.carrier, 100);
   const trackingNumber = validate.textField(req.body.tracking_number, 100);
-  orderModel.setStatus(req.params.ref, status, { carrier, trackingNumber });
-  req.session.flash = { type: 'success', key: 'admin.updated_status' };
+  const ok = orderModel.setStatus(req.params.ref, status, {
+    actorId: req.session.user.id,
+    carrier,
+    trackingNumber,
+    action: 'manual_status_update',
+  });
+  req.session.flash = ok
+    ? { type: 'success', key: 'admin.updated_status' }
+    : { type: 'error', key: 'admin.action_invalid' };
   res.redirect('/admin/commandes/' + req.params.ref);
 });
 

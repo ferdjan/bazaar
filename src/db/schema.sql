@@ -71,6 +71,18 @@ CREATE TABLE IF NOT EXISTS order_items (
   size       TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS order_status_history (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id    INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  actor_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  from_status TEXT,
+  to_status   TEXT NOT NULL,
+  action      TEXT NOT NULL DEFAULT 'status_update',
+  carrier     TEXT NOT NULL DEFAULT '',
+  tracking_number TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS newsletter (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   email      TEXT NOT NULL UNIQUE,
@@ -79,3 +91,4 @@ CREATE TABLE IF NOT EXISTS newsletter (
 
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_order_history_order ON order_status_history(order_id, created_at DESC);

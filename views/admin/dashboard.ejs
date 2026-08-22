@@ -26,6 +26,19 @@
   </div>
 
   <h2><%= t('admin.orders') %></h2>
+  <nav class="status-filters" aria-label="<%= t('admin.filter_orders') %>">
+    <a href="/admin" class="status-filter <%= status === 'all' ? 'active' : '' %>">
+      <span><%= t('admin.all_orders') %></span>
+      <strong><%= totalOrders %></strong>
+    </a>
+    <% statuses.forEach(function(filterStatus) { %>
+      <a href="/admin?status=<%= filterStatus %>" class="status-filter <%= status === filterStatus ? 'active' : '' %>">
+        <span><%= t('status.' + filterStatus) %></span>
+        <strong><%= statusCounts[filterStatus] %></strong>
+      </a>
+    <% }) %>
+  </nav>
+  <p class="filter-summary"><%= status === 'all' ? t('admin.all_orders') : t('status.' + status) %> · <%= recentOrders.length %> <%= t('admin.orders_count') %></p>
   <% if (!recentOrders.length) { %>
     <p class="empty"><%= t('account.no_orders') %></p>
   <% } else { %>

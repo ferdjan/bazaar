@@ -198,6 +198,44 @@ function makeOrder(method, totalDzd) {
   res = await admin.get('/admin');
   ok('GET /admin (admin) -> 200', res.status === 200);
   ok('tableau de bord contient la commande', res.text.includes(ref));
+  ok('dashboard affiche le compteur en attente', /En attente/.test(res.text) && />1<\/strong>/.test(res.text));
+
+  res = await admin.get('/admin?status=en_attente');
+  ok('dashboard filtre les commandes en attente', res.status === 200 && res.text.includes(ref));
+  res = await admin.get('/admin?status=livree');
+  ok('dashboard filtre les commandes livrées', res.status === 200 && !res.text.includes(ref));
+  res = await admin.get('/admin?status=statut-invalide');
+  ok('dashboard ignore un filtre de statut invalide', res.status === 200 && res.text.includes(ref));
+
+  // Actions rapides admin : CSRF, transitions COD et historique d'audit.
+  res = await admin.post('/admin/commandes/' + ref + '/action').type('form').send({ action: 'ship' });
+  ok('action commande sans CSRF -> 403', res.status === 403);
+  res = await admin.get('/admin/commandes/' + ref);
+  csrf = extractCsrf(res.text);
+  res = await admin.post('/admin/commandes/' + ref + '/action').type('form').send({
+    _csrf: csrf, action: 'ship', carrier: 'Yalidine', tracking_number: 'TRK-001',
+  });
+  ok('action expédier COD -> 302', res.status === 302);
+  let actionOrder = orderModel.findByRef(ref);
+  ok('expédition COD ne marque pas payée', actionOrder.status === 'expediee' && actionOrder.payment_status === 'pending');
+  ok('action expédier conserve le suivi', actionOrder.carrier === 'Yalidine' && actionOrder.tracking_number === 'TRK-001');
+  ok('transition expédier répétée refusée', orderModel.actionFor(ref, 'ship') === false);
+
+  res = await admin.get('/admin/commandes/' + ref);
+  csrf = extractCsrf(res.text);
+  await admin.post('/admin/commandes/' + ref + '/action').type('form').send({ _csrf: csrf, action: 'deliver' });
+  actionOrder = orderModel.findByRef(ref);
+  ok('action livrer conserve le suivi', actionOrder.status === 'livree' && actionOrder.carrier === 'Yalidine');
+  ok('livraison COD reste impayée avant encaissement', actionOrder.payment_status === 'pending');
+
+  res = await admin.get('/admin/commandes/' + ref);
+  csrf = extractCsrf(res.text);
+  await admin.post('/admin/commandes/' + ref + '/action').type('form').send({ _csrf: csrf, action: 'pay' });
+  actionOrder = orderModel.findByRef(ref);
+  ok('action payer COD enregistre l’encaissement', actionOrder.status === 'payee' && actionOrder.payment_status === 'paid');
+  const actionHistory = orderModel.listHistory(ref);
+  ok('historique conserve les trois actions admin', actionHistory.length === 3);
+  ok('historique identifie l’administrateur', actionHistory.every((event) => event.actor_name === 'Administrateur'));
 
   // L'admin peut consulter la commande d'un client
   res = await admin.get('/commande/' + ref);
@@ -485,7 +523,9 @@ function makeOrder(method, totalDzd) {
   const oCod = makeOrder('cod', 800);
   ok('COD en_attente non payée', oCod.payment_status === 'pending');
   orderModel.setStatus(oCod.ref, 'livree', {});
-  ok('COD livrée ⇒ payment_status paid', orderModel.findByRef(oCod.ref).payment_status === 'paid');
+  ok('COD livrée reste pending avant action payer', orderModel.findByRef(oCod.ref).payment_status === 'pending');
+  orderModel.actionFor(oCod.ref, 'pay');
+  ok('action payer COD ⇒ payment_status paid', orderModel.findByRef(oCod.ref).payment_status === 'paid');
 
   const oSt = makeOrder('stripe', 900);
   orderModel.setStatus(oSt.ref, 'en_attente', {});

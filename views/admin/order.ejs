@@ -26,6 +26,42 @@
 
   <%- include('../partials/order-tracking') %>
 
+  <section class="admin-actions">
+    <h2><%= t('admin.actions') %></h2>
+    <div class="actions">
+      <% if (order.status === 'livree' && order.payment_method === 'cod') { %>
+        <form method="post" action="/admin/commandes/<%= order.ref %>/action">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <input type="hidden" name="action" value="pay">
+          <button type="submit" class="btn btn-primary"><%= t('order.continue_payment') %></button>
+        </form>
+      <% } %>
+      <% if (order.status === 'payee' || (order.status === 'en_attente' && order.payment_method === 'cod')) { %>
+        <form method="post" action="/admin/commandes/<%= order.ref %>/action" class="action-form">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <input type="hidden" name="action" value="ship">
+          <input type="text" name="carrier" maxlength="100" placeholder="<%= t('tracking.carrier') %>">
+          <input type="text" name="tracking_number" maxlength="100" placeholder="<%= t('tracking.number') %>">
+          <button type="submit" class="btn btn-primary"><%= t('admin.ship') %></button>
+        </form>
+      <% } %>
+      <% if (order.status === 'expediee') { %>
+        <form method="post" action="/admin/commandes/<%= order.ref %>/action">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <input type="hidden" name="action" value="deliver">
+          <button type="submit" class="btn btn-primary"><%= t('admin.deliver') %></button>
+        </form>
+      <% } %>
+      <% if (order.status !== 'annulee') { %>
+        <form method="post" action="/admin/commandes/<%= order.ref %>/action" onsubmit="return confirm('<%= t('admin.confirm_cancel') %>');">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <input type="hidden" name="action" value="cancel">
+          <button type="submit" class="btn btn-danger"><%= t('admin.cancel_order') %></button>
+        </form>
+      <% } %>
+    </div>
+  </section>
+
   <form method="post" action="/admin/commandes/<%= order.ref %>/statut" class="filters">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
     <select name="status">
@@ -37,5 +73,26 @@
     <input type="text" name="tracking_number" placeholder="<%= t('tracking.number') %>" value="<%= order.tracking_number %>">
     <button type="submit" class="btn"><%= t('admin.save') %></button>
   </form>
+
+  <section class="admin-history">
+    <h2><%= t('admin.history') %></h2>
+    <% if (!history.length) { %>
+      <p class="empty"><%= t('admin.no_history') %></p>
+    <% } else { %>
+      <table class="table">
+        <thead><tr><th><%= t('order.date') %></th><th><%= t('admin.actions') %></th><th><%= t('order.status') %></th><th><%= t('admin.customer') %></th></tr></thead>
+        <tbody>
+          <% history.forEach(function(event) { %>
+            <tr>
+              <td><%= formatDate(event.created_at) %></td>
+              <td><%= t('admin.history.' + event.action) %></td>
+              <td><%= event.from_status ? t('status.' + event.from_status) + ' → ' : '' %><%= t('status.' + event.to_status) %></td>
+              <td><%= event.actor_name || '—' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
 </main>
 <%- include('../partials/footer') %>

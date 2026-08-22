@@ -1,6 +1,22 @@
 'use strict';
 require('dotenv').config();
 
+function validateProductionConfig() {
+  if (process.env.NODE_ENV !== 'production') return;
+
+  const required = [
+    ['SESSION_SECRET', process.env.SESSION_SECRET, (value) => value && value.length >= 32],
+    ['BASE_URL', process.env.BASE_URL, (value) => /^https:\/\//i.test(value || '')],
+    ['ADMIN_PASSWORD', process.env.ADMIN_PASSWORD, (value) => value && value !== 'admin123' && value.length >= 12],
+  ];
+  const invalid = required.filter(([, value, isValid]) => !isValid(value)).map(([name]) => name);
+  if (invalid.length) {
+    throw new Error(`Configuration production invalide ou absente : ${invalid.join(', ')}`);
+  }
+}
+
+validateProductionConfig();
+
 module.exports = {
   port: parseInt(process.env.PORT || '3000', 10),
   baseUrl: process.env.BASE_URL || 'http://localhost:3000',
