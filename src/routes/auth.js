@@ -57,7 +57,7 @@ router.post('/connexion', loginLimiter, (req, res, next) => {
   if (!u || !bcrypt.compareSync(password, u.password_hash)) {
     return res.render('pages/login', { title: 'login', error: 'auth.invalid', email });
   }
-  const dest = u.role === 'admin' ? '/admin' : (req.session.returnTo || '/compte');
+  const dest = u.role === 'admin' ? '/admin' : (u.role === 'seller' ? '/scan' : (req.session.returnTo || '/compte'));
 
   // Régénère l'identifiant de session après authentification réussie.
   req.session.regenerate((err) => {

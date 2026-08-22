@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Étiquette <%= order.ref %></title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { background: #fff; color: #111; }
+    .label { max-width: 430px; margin: 24px auto; padding: 24px; border: 2px solid #111; }
+    .label h1 { margin-bottom: 4px; }
+    .label table { width: 100%; margin: 18px 0; }
+    .label td { padding: 4px 0; vertical-align: top; }
+    .label td:first-child { font-weight: 700; width: 38%; }
+    .qr { text-align: center; margin: 18px 0 8px; }
+    .qr img { width: 220px; margin: auto; }
+    .print-actions { text-align: center; margin: 18px; }
+    @media print { .print-actions { display: none; } .label { margin: 0 auto; } }
+  </style>
+</head>
+<body>
+  <div class="print-actions"><button class="btn btn-primary" onclick="window.print()">Imprimer</button></div>
+  <main class="label">
+    <h1>Bazaar</h1>
+    <p><strong>Commande <%= order.ref %></strong></p>
+    <table>
+      <tr><td>Client</td><td><%= order.nom %></td></tr>
+      <tr><td>Téléphone</td><td><%= order.telephone %></td></tr>
+      <tr><td>Adresse</td><td><%= order.adresse %>, <%= order.ville %></td></tr>
+      <tr><td>Montant COD</td><td><strong><%= formatDzd(order.total_dzd) %></strong></td></tr>
+    </table>
+    <div class="qr"><img src="<%= qrDataUrl %>" alt="QR commande <%= order.ref %>"></div>
+    <p style="text-align:center">Scanner avec l'application vendeur</p>
+  </main>
+</body>
+</html>

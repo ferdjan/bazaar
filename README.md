@@ -11,6 +11,7 @@ Stack : **Node.js + Express + SQLite** (rendu serveur EJS).
 - Fiches produit, panier en session, comptes clients (bcrypt)
 - Checkout avec **3 moyens de paiement** : carte (Stripe), PayPal, cash à la livraison
 - Back-office admin : produits, catégories, commandes, clients, tableau de bord
+- Comptes vendeurs créés par l’admin : scan QR mobile et confirmation du paiement COD uniquement
 - Interface bilingue FR / Arabe avec bascule RTL
 - Sécurité : mots de passe hashés, CSRF, requêtes SQL préparées, uploads contrôlés, helmet
 
@@ -55,7 +56,18 @@ Le site est servi sur `http://localhost:3000`.
 - **Stripe** (mode test) : crée des clés sur <https://dashboard.stripe.com/test/apikeys>, puis
   test avec la carte `4242 4242 4242 4242`. Le webhook (`/webhooks/stripe`) confirme le paiement.
 - **PayPal** (sandbox) : crée une app sur <https://developer.paypal.com/dashboard>, mode `sandbox`.
-  La capture se fait au retour de l'acheteur.
+  La capture se fait au retour de l’acheteur.
+
+## Vendeurs et QR COD
+
+L’administrateur crée un vendeur depuis **Administration → Clients**, avec un e-mail et un mot de
+passe. Le vendeur se connecte sur `/connexion` et est redirigé vers `/scan`. Depuis un téléphone
+Android, il peut ouvrir l’étiquette QR imprimée ; la caméra est utilisée si le navigateur propose
+`BarcodeDetector`, sinon le code peut être saisi manuellement.
+
+Le vendeur ne peut pas accéder au catalogue d’administration. Il peut confirmer un paiement COD
+uniquement après que la commande a été marquée comme livrée. Chaque action reste protégée par la
+session, le CSRF et l’historique de commande.
 
 ### ⚠️ Devise
 

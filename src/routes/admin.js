@@ -11,6 +11,9 @@ const { slugify } = require('../services/slugify');
 const validate = require('../services/validate');
 const image = require('../services/image');
 const { STATUSES } = require('../services/orderStatus');
+const shipmentLabel = require('../services/shipmentLabel');
+const config = require('../config');
+const bcrypt = require('bcryptjs');
 
 router.use(requireAdmin);
 
@@ -178,6 +181,19 @@ router.get('/commandes/:ref', (req, res) => {
   if (!order) return res.redirect('/admin/commandes');
   res.render('admin/order', { title: 'admin', order, history: orderModel.listHistory(order.ref) });
 });
+
+// Génération/réimpression : seul l'administrateur connaît le token brut.
+router.post('/commandes/:ref/etiquette', async (req, res, next) => {
+  const order = orderModel.findByRef(req.params.ref);
+  if (!order) return res.redirect('/admin/commandes');
+  try {
+    const token = shipmentLabel.issue(order.id);
+    const qrDataUrl = await shipmentLabel.toDataUrl(token, config.baseUrl);
+    return res.render('admin/label', { title: 'label', order, qrDataUrl });
+  } catch (err) {
+    return next(err);
+  }
+});
 router.post('/commandes/:ref/action', (req, res) => {
   const action = validate.textField(req.body.action, 20);
   const carrier = validate.textField(req.body.carrier, 100);
@@ -208,9 +224,40 @@ router.post('/commandes/:ref/statut', (req, res) => {
   res.redirect('/admin/commandes/' + req.params.ref);
 });
 
+router.post('/commandes/:ref/incident', (req, res) => {
+  const issue = validate.textField(req.body.issue, 20);
+  const ok = orderModel.recordDeliveryIssue(req.params.ref, issue, req.session.user.id);
+  req.session.flash = ok
+    ? { type: 'success', key: 'admin.incident_done' }
+    : { type: 'error', key: 'admin.action_invalid' };
+  res.redirect('/admin/commandes/' + req.params.ref);
+});
+
+router.post('/commandes/:ref/retour', (req, res) => {
+  const condition = validate.textField(req.body.condition, 20);
+  const ok = orderModel.returnReceived(req.params.ref, condition, req.session.user.id);
+  req.session.flash = ok
+    ? { type: 'success', key: 'admin.return_done' }
+    : { type: 'error', key: 'admin.action_invalid' };
+  res.redirect('/admin/commandes/' + req.params.ref);
+});
+
 // Clients
 router.get('/clients', (req, res) => {
-  res.render('admin/users', { title: 'admin', users: userModel.listCustomers() });
+  res.render('admin/users', { title: 'admin', users: userModel.listCustomers(), sellers: userModel.listSellers() });
+});
+
+router.post('/vendeurs/nouveau', (req, res) => {
+  const name = validate.textField(req.body.name, validate.MAX.name);
+  const email = validate.textField(req.body.email, validate.MAX.email).toLowerCase();
+  const password = req.body.password || '';
+  if (!name || !validate.isEmail(email) || password.length < 6 || password.length > validate.MAX.password || userModel.findByEmail(email)) {
+    req.session.flash = { type: 'error', key: 'admin.seller_invalid' };
+    return res.redirect('/admin/clients');
+  }
+  userModel.create({ name, email, role: 'seller', password_hash: bcrypt.hashSync(password, 10) });
+  req.session.flash = { type: 'success', key: 'admin.seller_created' };
+  return res.redirect('/admin/clients');
 });
 
 module.exports = router;

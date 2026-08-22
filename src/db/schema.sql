@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   email         TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   name          TEXT NOT NULL,
-  role          TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('admin', 'customer')),
+  role          TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('admin', 'seller', 'customer')),
   reset_token   TEXT NOT NULL DEFAULT '',
   reset_expires TEXT,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS orders (
   delivery_dzd   INTEGER NOT NULL DEFAULT 0,
   payment_method TEXT NOT NULL CHECK (payment_method IN ('stripe','paypal','cod')),
   payment_status TEXT NOT NULL DEFAULT 'pending'
-                 CHECK (payment_status IN ('pending','paid','failed')),
+                  CHECK (payment_status IN ('pending','paid','failed')),
   provider_id    TEXT NOT NULL DEFAULT '',
   paid_at        TEXT,
   shipped_at     TEXT,
@@ -53,6 +53,11 @@ CREATE TABLE IF NOT EXISTS orders (
   cancelled_at   TEXT,
   carrier        TEXT NOT NULL DEFAULT '',
   tracking_number TEXT NOT NULL DEFAULT '',
+  delivery_status TEXT NOT NULL DEFAULT 'pending',
+  delivery_issue TEXT NOT NULL DEFAULT '',
+  stock_released INTEGER NOT NULL DEFAULT 0,
+  refund_dzd     INTEGER NOT NULL DEFAULT 0,
+  returned_at    TEXT,
   nom            TEXT NOT NULL,
   email          TEXT NOT NULL,
   telephone      TEXT NOT NULL,
@@ -83,6 +88,26 @@ CREATE TABLE IF NOT EXISTS order_status_history (
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS shipment_labels (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id   INTEGER NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  printed_at TEXT,
+  revoked_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS inventory_events (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id   INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+  product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+  qty        INTEGER NOT NULL,
+  event_type TEXT NOT NULL,
+  reason     TEXT NOT NULL DEFAULT '',
+  actor_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS newsletter (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   email      TEXT NOT NULL UNIQUE,
@@ -92,3 +117,4 @@ CREATE TABLE IF NOT EXISTS newsletter (
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_order_history_order ON order_status_history(order_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_inventory_order ON inventory_events(order_id, created_at DESC);

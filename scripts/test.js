@@ -20,6 +20,7 @@ const paypal = require('../src/services/payment/paypal');
 const validate = require('../src/services/validate');
 const mail = require('../src/services/mail');
 const { buildTimeline } = require('../src/services/orderStatus');
+const shipmentLabel = require('../src/services/shipmentLabel');
 
 seed();
 const app = createApp();
@@ -236,6 +237,56 @@ function makeOrder(method, totalDzd) {
   const actionHistory = orderModel.listHistory(ref);
   ok('historique conserve les trois actions admin', actionHistory.length === 3);
   ok('historique identifie l’administrateur', actionHistory.every((event) => event.actor_name === 'Administrateur'));
+
+  // ---- Étiquette QR et scan vendeur ---------------------------------------
+  const labelToken = shipmentLabel.issue(codOrderDb.id);
+  ok('étiquette QR créée avec un jeton aléatoire', /^[a-f0-9]{64}$/.test(labelToken));
+  ok('jeton QR non stocké en clair', !db.prepare('SELECT token_hash FROM shipment_labels WHERE order_id = ?').get(codOrderDb.id).token_hash.includes(labelToken));
+  ok('jeton QR retrouve la commande', shipmentLabel.findByToken(labelToken).ref === codOrderDb.ref);
+  const secondLabelToken = shipmentLabel.issue(codOrderDb.id);
+  ok('réimpression révoque l’ancien QR', shipmentLabel.findByToken(labelToken) === null && !!shipmentLabel.findByToken(secondLabelToken));
+  res = await request(app).get('/scan/' + secondLabelToken);
+  ok('scan sans authentification refusé', res.status === 302);
+  res = await admin.get('/scan/' + secondLabelToken);
+  ok('admin ouvre le scan QR', res.status === 200 && res.text.includes(codOrderDb.ref));
+  res = await admin.get('/admin/commandes/' + codOrderDb.ref);
+  csrf = extractCsrf(res.text);
+  res = await admin.post('/admin/commandes/' + codOrderDb.ref + '/etiquette').type('form').send({ _csrf: csrf });
+  ok('admin génère une étiquette imprimable', res.status === 200 && /Imprimer/.test(res.text) && /data:image\/png/.test(res.text));
+  const sellerLabelToken = shipmentLabel.issue(codOrderDb.id);
+
+  // Compte vendeur : création par admin, accès scan uniquement.
+  res = await admin.get('/admin/clients');
+  csrf = extractCsrf(res.text);
+  res = await admin.post('/admin/vendeurs/nouveau').type('form').send({
+    _csrf: csrf, name: 'Vendeur Test', email: 'seller@test.com', password: 'seller123',
+  });
+  ok('admin crée un compte vendeur', res.status === 302);
+  const seller = request.agent(app);
+  res = await seller.get('/connexion');
+  csrf = extractCsrf(res.text);
+  res = await seller.post('/connexion').type('form').send({
+    _csrf: csrf, email: 'seller@test.com', password: 'seller123',
+  });
+  ok('vendeur se connecte et arrive au scan', res.status === 302 && res.headers.location === '/scan');
+  res = await seller.get('/scan/' + sellerLabelToken);
+  ok('vendeur ouvre un QR', res.status === 200 && res.text.includes(codOrderDb.ref));
+  res = await seller.get('/admin');
+  ok('vendeur ne peut pas ouvrir admin', res.status === 403);
+
+  // Retour revendable : le stock est réintégré une seule fois.
+  const returnProduct = product.findById(10);
+  db.prepare('UPDATE products SET stock = 3 WHERE id = 10').run();
+  const returnRef = orderModel.create({
+    order: { user_id: null, status: 'en_attente', total_dzd: 1200, total_eur: '5.40', delivery_dzd: 600,
+      payment_method: 'cod', payment_status: 'pending', provider_id: '', nom: 'Retour', email: 'return@test.com',
+      telephone: '0550123456', adresse: '1 Rue Z', ville: 'Alger' },
+    items: [{ productId: 10, name: returnProduct.name_fr, priceDzd: 1200, qty: 1, size: 'Taille unique' }],
+  }).ref;
+  ok('stock réservé pour le retour', product.findById(10).stock === 2);
+  ok('incident retour enregistré', orderModel.recordDeliveryIssue(returnRef, 'returned', 1) === true);
+  ok('retour revendable réintègre le stock', orderModel.returnReceived(returnRef, 'resellable', 1) === true && product.findById(10).stock === 3);
+  ok('retour traité une seule fois', orderModel.returnReceived(returnRef, 'resellable', 1) === false && product.findById(10).stock === 3);
 
   // L'admin peut consulter la commande d'un client
   res = await admin.get('/commande/' + ref);

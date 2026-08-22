@@ -86,6 +86,56 @@ function listHistory(ref) {
   `).all(ref);
 }
 
+const releaseStockTx = db.transaction((orderId, actorId, reason) => {
+  const order = db.prepare('SELECT id, stock_released FROM orders WHERE id = ?').get(orderId);
+  if (!order || order.stock_released) return false;
+  const items = db.prepare('SELECT product_id, qty FROM order_items WHERE order_id = ? AND product_id IS NOT NULL').all(orderId);
+  const add = db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?');
+  const event = db.prepare(`
+    INSERT INTO inventory_events (order_id, product_id, qty, event_type, reason, actor_id)
+    VALUES (?, ?, ?, 'release', ?, ?)
+  `);
+  for (const item of items) {
+    add.run(item.qty, item.product_id);
+    event.run(orderId, item.product_id, item.qty, reason, actorId || null);
+  }
+  db.prepare('UPDATE orders SET stock_released = 1 WHERE id = ?').run(orderId);
+  return true;
+});
+
+function releaseStock(ref, actorId, reason = 'order_cancelled') {
+  const order = db.prepare('SELECT id FROM orders WHERE ref = ?').get(ref);
+  return order ? releaseStockTx(order.id, actorId, reason) : false;
+}
+
+function recordDeliveryIssue(ref, issue, actorId) {
+  const allowed = ['failed', 'damaged', 'returning', 'returned'];
+  if (!allowed.includes(issue)) return false;
+  const order = db.prepare('SELECT id, status, delivery_status FROM orders WHERE ref = ?').get(ref);
+  if (!order || order.status === 'annulee' || order.delivery_status === 'returned') return false;
+  if (issue === 'returned') {
+    db.prepare("UPDATE orders SET delivery_status = 'returned', delivery_issue = ?, returned_at = datetime('now') WHERE id = ?")
+      .run(issue, order.id);
+    recordHistory(order.id, order.status, order.status, { actorId, action: 'return_received' });
+    return true;
+  }
+  db.prepare('UPDATE orders SET delivery_status = ?, delivery_issue = ? WHERE id = ?').run(issue, issue, order.id);
+  recordHistory(order.id, order.status, order.status, { actorId, action: 'delivery_issue' });
+  return true;
+}
+
+function returnReceived(ref, condition, actorId) {
+  if (!['resellable', 'damaged'].includes(condition)) return false;
+  const order = db.prepare('SELECT id, status, payment_status, delivery_status FROM orders WHERE ref = ?').get(ref);
+  if (!order || order.delivery_status !== 'returned') return false;
+  const released = condition === 'resellable' ? releaseStockTx(order.id, actorId, 'return_resellable') : false;
+  const refund = order.payment_status === 'paid' ? db.prepare(
+    "UPDATE orders SET refund_dzd = total_dzd WHERE id = ? AND refund_dzd = 0"
+  ).run(order.id).changes > 0 : false;
+  recordHistory(order.id, order.status, order.status, { actorId, action: condition === 'resellable' ? 'return_resellable' : 'return_damaged' });
+  return released || refund || condition === 'damaged';
+}
+
 function recordHistory(orderId, fromStatus, toStatus, opts = {}) {
   db.prepare(`
     INSERT INTO order_status_history
@@ -204,13 +254,17 @@ function actionFor(ref, action, opts = {}) {
     pay: order.status === 'livree' && order.payment_method === 'cod' ? 'payee' : null,
     ship: order.status === 'payee' || (order.status === 'en_attente' && order.payment_method === 'cod') ? 'expediee' : null,
     deliver: order.status === 'expediee' ? 'livree' : null,
-    cancel: order.status === 'annulee' ? null : 'annulee',
+     cancel: order.status === 'annulee' ? null : 'annulee',
   }[action];
   if (!next) return false;
   const tracking = action === 'ship'
     ? opts
     : { ...opts, carrier: order.carrier, trackingNumber: order.tracking_number };
-  return setStatus(ref, next, { ...tracking, action });
+  const changed = setStatus(ref, next, { ...tracking, action });
+  if (changed && action === 'cancel' && order.status === 'en_attente') {
+    releaseStock(ref, opts.actorId, 'order_cancelled');
+  }
+  return changed;
 }
 
 function updatePaymentStatus(ref, paymentStatus) {
@@ -223,7 +277,7 @@ function updatePaymentStatus(ref, paymentStatus) {
 function stats() {
   const totalOrders = db.prepare('SELECT COUNT(*) AS n FROM orders').get().n;
   const revenue = db.prepare(
-    "SELECT COALESCE(SUM(total_dzd), 0) AS n FROM orders WHERE payment_status = 'paid' AND status != 'annulee'"
+    "SELECT COALESCE(SUM(total_dzd - refund_dzd), 0) AS n FROM orders WHERE payment_status = 'paid' AND status != 'annulee'"
   ).get().n;
   return { totalOrders, revenue };
 }
@@ -232,4 +286,5 @@ module.exports = {
   create, findByRef, findById, listHistory, listByUser, listAll, listRecent, listRecentByStatus, statusCounts,
   setProviderId, findByProviderId, markPaid,
   setStatus, actionFor, updatePaymentStatus, stats,
+  releaseStock, recordDeliveryIssue, returnReceived,
 };

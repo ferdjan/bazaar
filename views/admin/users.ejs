@@ -2,6 +2,22 @@
 <%- include('../partials/admin-nav') %>
 <main class="container">
   <h1><%= t('admin.users') %></h1>
+  <section class="form-card">
+    <h2><%= t('admin.create_seller') %></h2>
+    <form method="post" action="/admin/vendeurs/nouveau" class="action-form">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <input name="name" placeholder="<%= t('auth.name') %>" required maxlength="100">
+      <input name="email" type="email" placeholder="<%= t('auth.email') %>" required maxlength="254">
+      <input name="password" type="password" placeholder="<%= t('auth.password') %>" required minlength="6" maxlength="128">
+      <button type="submit" class="btn btn-primary"><%= t('admin.create_seller') %></button>
+    </form>
+  </section>
+  <h2><%= t('admin.sellers') %></h2>
+  <table class="table">
+    <thead><tr><th><%= t('auth.name') %></th><th><%= t('auth.email') %></th><th><%= t('order.date') %></th></tr></thead>
+    <tbody><% sellers.forEach(function(u){ %><tr><td><%= u.name %></td><td><%= u.email %></td><td><%= u.created_at %></td></tr><% }) %></tbody>
+  </table>
+  <h2><%= t('admin.users') %></h2>
   <table class="table">
     <thead>
       <tr>

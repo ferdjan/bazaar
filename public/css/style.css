@@ -139,6 +139,8 @@ main.container { padding-top: 36px; padding-bottom: 56px; min-height: 50vh; }
 .btn-sm { padding: 7px 16px; font-size: 0.76rem; }
 .btn-lg { padding: 17px 40px; font-size: 0.94rem; }
 .btn.block { display: flex; width: 100%; text-align: center; margin-top: 14px; }
+.camera-preview { width: 100%; max-height: 300px; margin: 16px 0; border: 1px solid var(--gold); border-radius: var(--radius-sm); object-fit: cover; }
+.mobile-scan { max-width: 520px; }
 
 /* --------------------------------------------------------------------------
    Bandeau d'annonce

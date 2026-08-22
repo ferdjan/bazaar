@@ -1,0 +1,38 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+<main class="container narrow mobile-scan">
+  <h1><%= t('scan.title') %></h1>
+  <p><%= t('scan.intro') %></p>
+  <% if (error) { %><div class="flash flash-error"><%= t(error) %></div><% } %>
+  <% if (!label) { %>
+    <button type="button" class="btn btn-primary block" id="start-scan"><%= t('scan.camera') %></button>
+    <video id="camera-preview" class="camera-preview" autoplay muted playsinline hidden></video>
+    <p id="camera-status" class="muted" aria-live="polite"></p>
+    <form method="post" action="/scan" class="form-card">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label for="token"><%= t('scan.token') %></label>
+      <input id="token" name="token" required pattern="[a-fA-F0-9]{64}" autocomplete="off" autofocus>
+      <button class="btn btn-primary block" type="submit"><%= t('scan.find') %></button>
+    </form>
+    <p class="muted"><%= t('scan.camera_note') %></p>
+  <% } else { %>
+    <div class="form-card">
+      <p><strong><%= t('order.ref') %> :</strong> <%= order.ref %></p>
+      <p><strong><%= t('admin.customer') %> :</strong> <%= order.nom %></p>
+      <p><strong><%= t('checkout.address') %> :</strong> <%= order.adresse %>, <%= order.ville %></p>
+      <p><strong><%= t('order.total') %> :</strong> <%= formatDzd(order.total_dzd) %></p>
+      <p><strong><%= t('order.status') %> :</strong> <%= t('status.' + order.status) %></p>
+      <% if (order.status === 'livree' && order.payment_method === 'cod' && order.payment_status !== 'paid') { %>
+        <form method="post" action="/scan/payer">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <input type="hidden" name="token" value="<%= token %>">
+          <button class="btn btn-primary block" type="submit"><%= t('scan.confirm_payment') %></button>
+        </form>
+      <% } else { %>
+        <div class="flash flash-error"><%= t('scan.not_payable') %></div>
+      <% } %>
+    </div>
+  <% } %>
+</main>
+<% if (!label) { %><script src="/js/scanner.js" defer></script><% } %>
+<%- include('../partials/footer') %>

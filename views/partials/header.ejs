@@ -12,8 +12,8 @@
     </form>
     <div class="header-actions">
       <a href="/lang/<%= lang === 'ar' ? 'fr' : 'ar' %>" class="lang-switch"><%= t('lang.switch') %></a>
-      <% if (user) { %>
-        <a href="<%= isAdmin ? '/admin' : '/compte' %>" class="icon-btn" aria-label="<%= isAdmin ? t('nav.admin') : t('nav.account') %>">
+       <% if (user) { %>
+         <a href="<%= isAdmin ? '/admin' : (isSeller ? '/scan' : '/compte') %>" class="icon-btn" aria-label="<%= isAdmin ? t('nav.admin') : (isSeller ? t('scan.title') : t('nav.account')) %>">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.6-4 5-5.5 8-5.5s6.4 1.5 8 5.5"/></svg>
         </a>
         <form action="/deconnexion" method="post" class="inline-form">
@@ -24,7 +24,7 @@
         <a href="/connexion" class="lang-switch"><%= t('nav.login') %></a>
         <a href="/inscription" class="btn btn-primary btn-sm"><%= t('nav.register') %></a>
       <% } %>
-      <% if (!isAdmin) { %>
+       <% if (!isAdmin && !isSeller) { %>
         <a href="/panier" class="icon-btn" aria-label="<%= t('nav.cart') %>">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1.2 12.2a1.5 1.5 0 0 1-1.5 1.3H8.7a1.5 1.5 0 0 1-1.5-1.3L6 8Z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg>
           <span class="cart-count"><%= cartCount %></span>

@@ -25,6 +25,7 @@ function locals(req, res, next) {
   res.locals.cname = (c) => res.locals.L(c.name_fr, c.name_ar);
   res.locals.user = (req.session && req.session.user) || null;
   res.locals.isAdmin = !!(req.session && req.session.user && req.session.user.role === 'admin');
+  res.locals.isSeller = !!(req.session && req.session.user && req.session.user.role === 'seller');
   res.locals.cartCount = cartCount(req);
   res.locals.path = req.path;
   res.locals.categories = category.listAll();

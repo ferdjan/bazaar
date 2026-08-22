@@ -38,6 +38,16 @@ function listCustomers() {
   ).all();
 }
 
+function listSellers() {
+  return db.prepare(
+    "SELECT id, email, name, role, created_at FROM users WHERE role = 'seller' ORDER BY created_at DESC"
+  ).all();
+}
+
+function countSellers() {
+  return db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'seller'").get().n;
+}
+
 function countCustomers() {
   return db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'customer'").get().n;
 }
@@ -69,6 +79,6 @@ function resetPassword(id, password_hash) {
 }
 
 module.exports = {
-  findByEmail, findById, create, listCustomers, countCustomers,
+  findByEmail, findById, create, listCustomers, listSellers, countCustomers, countSellers,
   setResetToken, findByResetToken, resetPassword,
 };

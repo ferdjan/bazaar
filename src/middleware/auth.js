@@ -20,4 +20,16 @@ function requireAdmin(req, res, next) {
   return next();
 }
 
-module.exports = { requireAuth, requireAdmin };
+function requireSeller(req, res, next) {
+  const user = req.session && req.session.user;
+  if (!user) {
+    req.session.returnTo = req.originalUrl;
+    return res.redirect('/connexion');
+  }
+  if (user.role !== 'admin' && user.role !== 'seller') {
+    return res.status(403).render('pages/403', { title: '403' });
+  }
+  return next();
+}
+
+module.exports = { requireAuth, requireAdmin, requireSeller };

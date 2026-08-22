@@ -14,6 +14,30 @@ db.pragma('foreign_keys = ON');
 // Le schéma neuf (schema.sql) crée directement les colonnes ; on ne touche ici
 // qu'aux colonnes ajoutées après coup sur des bases historiques.
 function migrate() {
+  // Les anciennes bases avaient un CHECK limité à admin/customer. SQLite ne
+  // sait pas modifier ce CHECK avec ALTER TABLE : on reconstruit uniquement
+  // cette table en conservant les identifiants et les mots de passe.
+  const userSql = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").get();
+  if (userSql && !String(userSql.sql).includes("'seller'")) {
+    db.pragma('foreign_keys = OFF');
+    db.exec(`
+      CREATE TABLE users_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        name TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('admin', 'seller', 'customer')),
+        reset_token TEXT NOT NULL DEFAULT '',
+        reset_expires TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO users_new (id, email, password_hash, name, role, reset_token, reset_expires, created_at)
+        SELECT id, email, password_hash, name, role, reset_token, reset_expires, created_at FROM users;
+      DROP TABLE users;
+      ALTER TABLE users_new RENAME TO users;
+    `);
+    db.pragma('foreign_keys = ON');
+  }
   const cols = db.prepare('PRAGMA table_info(orders)').all().map((c) => c.name);
   if (!cols.includes('provider_id')) {
     db.exec("ALTER TABLE orders ADD COLUMN provider_id TEXT NOT NULL DEFAULT ''");
@@ -39,6 +63,11 @@ function migrate() {
   if (!cols.includes('tracking_number')) {
     db.exec("ALTER TABLE orders ADD COLUMN tracking_number TEXT NOT NULL DEFAULT ''");
   }
+  if (!cols.includes('delivery_status')) db.exec("ALTER TABLE orders ADD COLUMN delivery_status TEXT NOT NULL DEFAULT 'pending'");
+  if (!cols.includes('delivery_issue')) db.exec("ALTER TABLE orders ADD COLUMN delivery_issue TEXT NOT NULL DEFAULT ''");
+  if (!cols.includes('stock_released')) db.exec('ALTER TABLE orders ADD COLUMN stock_released INTEGER NOT NULL DEFAULT 0');
+  if (!cols.includes('refund_dzd')) db.exec('ALTER TABLE orders ADD COLUMN refund_dzd INTEGER NOT NULL DEFAULT 0');
+  if (!cols.includes('returned_at')) db.exec('ALTER TABLE orders ADD COLUMN returned_at TEXT');
 
   const ucols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
   if (!ucols.includes('reset_token')) {
@@ -61,6 +90,25 @@ function migrate() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_order_history_order ON order_status_history(order_id, created_at DESC);
+    CREATE TABLE IF NOT EXISTS shipment_labels (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      printed_at TEXT,
+      revoked_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS inventory_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+      product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+      qty INTEGER NOT NULL,
+      event_type TEXT NOT NULL,
+      reason TEXT NOT NULL DEFAULT '',
+      actor_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_inventory_order ON inventory_events(order_id, created_at DESC);
   `);
 }
 

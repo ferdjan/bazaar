@@ -1,0 +1,9 @@
+{
+  "name": "Bazaar Scan vendeur",
+  "short_name": "Bazaar Scan",
+  "start_url": "/scan",
+  "display": "standalone",
+  "background_color": "#0a0a0c",
+  "theme_color": "#c9a227",
+  "lang": "fr"
+}
