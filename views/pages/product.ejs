@@ -3,14 +3,17 @@
 <main class="container">
   <a href="/catalogue" class="back">← <%= t('common.back') %></a>
   <div class="product-detail">
-    <div class="product-img large">
-      <% if (product.image) { %><img src="<%= product.image %>" alt="<%= pname(product) %>"><% } else { %><span class="placeholder" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a2.1 2.1 0 1 0-2.1 2.1c.9 0 1.6.7 1.6 1.6V8"/><path d="m11.5 8-8 5.5A1.8 1.8 0 0 0 4.5 16.8h15a1.8 1.8 0 0 0 1-3.3L12.5 8"/></svg></span><% } %>
-    </div>
-    <% if (images && images.length) { %>
-      <div class="product-gallery">
-        <% images.forEach(function(im){ %><img src="<%= im.path %>" alt="<%= pname(product) %>" loading="lazy"><% }) %>
+    <div class="product-media">
+      <div class="product-img large" id="main-image">
+        <% if (product.image) { %><img src="<%= product.image %>" alt="<%= pname(product) %>" id="main-image-img"><% } else { %><span class="placeholder" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a2.1 2.1 0 1 0-2.1 2.1c.9 0 1.6.7 1.6 1.6V8"/><path d="m11.5 8-8 5.5A1.8 1.8 0 0 0 4.5 16.8h15a1.8 1.8 0 0 0 1-3.3L12.5 8"/></svg></span><% } %>
       </div>
-    <% } %>
+      <% if (images && images.length) { %>
+        <div class="product-gallery">
+          <img src="<%= product.image %>" alt="<%= pname(product) %>" class="gallery-thumb active" data-src="<%= product.image %>" loading="lazy">
+          <% images.forEach(function(im){ %><img src="<%= im.path %>" alt="<%= pname(product) %>" class="gallery-thumb" data-src="<%= im.path %>" loading="lazy"><% }) %>
+        </div>
+      <% } %>
+    </div>
     <div class="product-info">
       <% if (cat) { %><span class="chip"><%= cname(cat) %></span><% } %>
       <h1><%= pname(product) %></h1>

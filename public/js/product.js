@@ -17,3 +17,14 @@ document.querySelectorAll('.qty-stepper').forEach(function (st) {
     });
   });
 });
+
+/* Galerie d'images : cliquer sur une vignette remplace l'image principale. */
+var mainImg = document.getElementById('main-image-img');
+document.querySelectorAll('.gallery-thumb').forEach(function (thumb) {
+  thumb.addEventListener('click', function () {
+    if (mainImg) mainImg.src = thumb.dataset.src;
+    document.querySelectorAll('.gallery-thumb').forEach(function (t) {
+      t.classList.toggle('active', t === thumb);
+    });
+  });
+});
