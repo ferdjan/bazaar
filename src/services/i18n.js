@@ -29,6 +29,17 @@ const strings = {
   'product.related': { fr: 'Produits similaires', ar: 'منتجات مشابهة' },
   'product.shipping_flat': { fr: 'Livraison 600 DA', ar: 'التوصيل 600 دج' },
   'product.whatsapp': { fr: 'Commander ce produit via WhatsApp', ar: 'اطلب هذا المنتج عبر واتساب' },
+  'review.title': { fr: 'Avis clients', ar: 'آراء العملاء' },
+  'review.no_reviews': { fr: 'Aucun avis pour le moment.', ar: 'لا توجد آراء بعد.' },
+  'review.write': { fr: 'Laisser un avis', ar: 'اترك تقييماً' },
+  'review.your_rating': { fr: 'Votre note', ar: 'تقييمك' },
+  'review.comment': { fr: 'Votre commentaire (optionnel)', ar: 'تعليقك (اختياري)' },
+  'review.submit': { fr: 'Publier mon avis', ar: 'نشر تقييمي' },
+  'review.your_review': { fr: 'Votre avis', ar: 'تقييمك' },
+  'review.saved': { fr: 'Merci pour votre avis !', ar: 'شكراً لتقييمك!' },
+  'review.invalid': { fr: 'Note invalide (entre 1 et 5).', ar: 'تقييم غير صالح (من 1 إلى 5).' },
+  'review.not_allowed': { fr: 'Vous devez avoir commandé ce produit pour laisser un avis.', ar: 'يجب أن تكون قد طلبت هذا المنتج لترك تقييم.' },
+  'review.login': { fr: 'Connectez-vous pour laisser un avis.', ar: 'سجّل الدخول لترك تقييم.' },
   'product.stock_limited': { fr: 'Stock limité', ar: 'كمية محدودة' },
 
   // Panier

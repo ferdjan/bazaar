@@ -736,6 +736,22 @@ label { display: block; margin: 16px 0 6px; font-weight: 600; font-size: 0.82rem
 .product-gallery .gallery-thumb:hover { opacity: 1; border-color: rgba(201, 162, 39, 0.5); }
 .product-gallery .gallery-thumb.active { opacity: 1; border-color: var(--gold); }
 .product-media { display: flex; flex-direction: column; gap: 12px; }
+
+/* Avis clients */
+.rating-badge { display: inline-block; font-size: 0.8rem; font-weight: 700; color: var(--gold-light); margin-left: 8px; }
+.review-list { list-style: none; padding: 0; margin: 16px 0; }
+.review-item { border-bottom: 1px solid var(--border-soft); padding: 14px 0; }
+.review-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.review-author { font-weight: 700; }
+.review-stars .star { color: rgba(245, 241, 230, 0.2); }
+.review-stars .star.on { color: var(--gold); }
+.review-date { color: var(--muted); font-size: 0.76rem; }
+.review-comment { margin: 8px 0 0; color: var(--text); }
+.review-form { margin-top: 20px; padding: 18px; border: 1px solid var(--border-soft); border-radius: var(--radius); }
+.star-input { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; margin: 6px 0 14px; }
+.star-input input { display: none; }
+.star-input label { font-size: 1.8rem; color: rgba(245, 241, 230, 0.25); cursor: pointer; transition: color 0.15s ease; }
+.star-input label:hover, .star-input label:hover ~ label, .star-input input:checked ~ label { color: var(--gold); }
 .image-gallery { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0; }
 .image-gallery-item { display: flex; flex-direction: column; gap: 6px; align-items: center; }
 

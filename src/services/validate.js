@@ -22,6 +22,7 @@ const MAX = {
   sizes: 200,
   size: 50,
   qty: 99,
+  reviewComment: 2000,
 };
 
 function isEmail(value) {
@@ -129,6 +130,16 @@ function category(body) {
   return { ok: true, name_fr, name_ar };
 }
 
+// Validation d'un avis client : note 1-5 et commentaire optionnel.
+function review(body) {
+  const rating = body.rating;
+  const comment = textField(body.comment, MAX.reviewComment);
+  if (!isInt(rating, { min: 1, max: 5 })) {
+    return { ok: false, rating: null, comment };
+  }
+  return { ok: true, rating: parseInt(rating, 10), comment };
+}
+
 module.exports = {
   isEmail,
   isPhone,
@@ -139,5 +150,6 @@ module.exports = {
   checkout,
   product,
   category,
+  review,
   MAX,
 };

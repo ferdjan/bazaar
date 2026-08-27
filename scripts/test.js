@@ -592,6 +592,67 @@ function makeOrder(method, totalDzd) {
   orderModel.setStatus(oSt.ref, 'en_attente', {});
   ok('en_attente ne marque jamais payée', orderModel.findByRef(oSt.ref).payment_status === 'pending');
 
+  // ---- Avis clients ---------------------------------------------------------
+  const review = require('../src/models/review');
+
+  // Nouveau client dédié (session propre) : inscription -> commande -> avis.
+  const reviewer = request.agent(app);
+  res = await reviewer.get('/inscription');
+  csrf = extractCsrf(res.text);
+  res = await reviewer.post('/inscription').type('form')
+    .send({ _csrf: csrf, name: 'Avis Test', email: 'avis@test.com', password: 'secret789' });
+  ok('avis : inscription -> 302', res.status === 302);
+
+  res = await reviewer.get('/produit/t-shirt-coton');
+  csrf = extractCsrf(res.text);
+  res = await reviewer.post('/panier/ajouter').type('form')
+    .send({ _csrf: csrf, productId: 1, qty: 1, size: 'M' });
+  res = await reviewer.get('/commande');
+  csrf = extractCsrf(res.text);
+  res = await reviewer.post('/commande').type('form').send({
+    _csrf: csrf, nom: 'Avis Test', email: 'avis@test.com',
+    telephone: '0550123456', adresse: '12 Rue X', ville: 'Alger', payment_method: 'cod',
+  });
+  ok('avis : commande -> 302', res.status === 302);
+
+  // Dépôt d'avis valide.
+  res = await reviewer.get('/produit/t-shirt-coton');
+  csrf = extractCsrf(res.text);
+  res = await reviewer.post('/produit/t-shirt-coton/avis').type('form')
+    .send({ _csrf: csrf, rating: 5, comment: 'Très bon produit' });
+  ok('dépôt avis -> 302', res.status === 302);
+  ok('avis enregistré', review.statsForProduct(1).count === 1);
+  ok('note moyenne = 5', review.statsForProduct(1).avg === 5);
+
+  // Note invalide (99) refusée : la note reste 5.
+  res = await reviewer.get('/produit/t-shirt-coton');
+  csrf = extractCsrf(res.text);
+  res = await reviewer.post('/produit/t-shirt-coton/avis').type('form')
+    .send({ _csrf: csrf, rating: 99, comment: '' });
+  ok('note invalide (99) refusée', res.status === 302 && review.statsForProduct(1).avg === 5);
+
+  // Un client sans connexion ne peut pas déposer d'avis (CSRF global le bloque).
+  res = await request(app).post('/produit/t-shirt-coton/avis').type('form')
+    .send({ rating: 5, comment: '' });
+  ok('avis sans auth -> bloqué (403 CSRF)', res.status === 403);
+
+  // Un client qui n'a PAS commandé le produit ne peut pas déposer d'avis.
+  const reviewer2 = request.agent(app);
+  res = await reviewer2.get('/inscription');
+  csrf = extractCsrf(res.text);
+  res = await reviewer2.post('/inscription').type('form')
+    .send({ _csrf: csrf, name: 'Avis Sans Achat', email: 'avis2@test.com', password: 'secret000' });
+  res = await reviewer2.get('/produit/t-shirt-coton');
+  csrf = extractCsrf(res.text);
+  res = await reviewer2.post('/produit/t-shirt-coton/avis').type('form')
+    .send({ _csrf: csrf, rating: 5, comment: 'Je n\'ai pas acheté' });
+  ok('avis sans commande -> refusé', res.status === 302 && review.statsForProduct(1).count === 1);
+
+  // La fiche produit affiche l'avis.
+  res = await request(app).get('/produit/t-shirt-coton');
+  ok('fiche produit affiche la section avis', /reviews-section/.test(res.text));
+  ok('fiche produit affiche le commentaire', /Très bon produit/.test(res.text));
+
   console.log('\nTests : ' + passed + ' assertions OK.');
   process.exit(0);
 })().catch((err) => {

@@ -69,6 +69,46 @@
       </div>
     </section>
   <% } %>
+
+  <section class="section reviews-section">
+    <h2><%= t('review.title') %> <% if (reviewStats.count) { %><span class="rating-badge">★ <%= reviewStats.avg %> (<%= reviewStats.count %>)</span><% } %></h2>
+
+    <% if (reviews.length) { %>
+      <ul class="review-list">
+        <% reviews.forEach(function(r){ %>
+          <li class="review-item">
+            <div class="review-head">
+              <span class="review-author"><%= r.author_name %></span>
+              <span class="review-stars" aria-label="<%= r.rating %>/5"><% for (let s = 1; s <= 5; s++) { %><span class="star <%= s <= r.rating ? 'on' : '' %>">★</span><% } %></span>
+              <span class="review-date"><%= formatDate(r.created_at) %></span>
+            </div>
+            <% if (r.comment) { %><p class="review-comment"><%= r.comment %></p><% } %>
+          </li>
+        <% }) %>
+      </ul>
+    <% } else { %>
+      <p class="empty"><%= t('review.no_reviews') %></p>
+    <% } %>
+
+    <% if (canReview) { %>
+      <form method="post" action="/produit/<%= product.slug %>/avis" class="review-form">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <h3><%= myReview ? t('review.your_review') : t('review.write') %></h3>
+        <label><%= t('review.your_rating') %></label>
+        <div class="star-input">
+          <% for (let s = 5; s >= 1; s--) { %>
+            <input type="radio" name="rating" id="star-<%= s %>" value="<%= s %>" <%= (myReview && myReview.rating === s) ? 'checked' : '' %> required>
+            <label for="star-<%= s %>" title="<%= s %>">★</label>
+          <% } %>
+        </div>
+        <label for="comment"><%= t('review.comment') %></label>
+        <textarea id="comment" name="comment" rows="3"><%= myReview ? myReview.comment : '' %></textarea>
+        <button type="submit" class="btn btn-primary"><%= t('review.submit') %></button>
+      </form>
+    <% } else if (!user) { %>
+      <p class="muted"><a href="/connexion"><%= t('review.login') %></a></p>
+    <% } %>
+  </section>
 </main>
 <script src="/js/product.js" defer></script>
 <%- include('../partials/footer') %>
