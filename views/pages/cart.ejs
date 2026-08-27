@@ -49,6 +49,7 @@
         <p><%= t('cart.shipping') %> : <strong><%= formatDzd(delivery) %></strong></p>
         <p class="total"><%= t('cart.total_due') %> : <strong><%= formatDzd(total) %></strong></p>
         <a href="/commande" class="btn btn-primary block"><%= t('cart.checkout') %></a>
+        <% if (whatsappLink) { %><a href="<%= whatsappLink %>" target="_blank" rel="noopener" class="btn btn-whatsapp block"><%= t('cart.whatsapp') %></a><% } %>
         <a href="/catalogue" class="btn block"><%= t('cart.continue') %></a>
       </aside>
     </div>

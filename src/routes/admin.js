@@ -23,28 +23,30 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024,
-    files: 1,
+    files: 6,
     fields: 30,
-    parts: 32,
+    parts: 40,
     fieldNameSize: 100,
     headerPairs: 100,
   },
 });
 
-function uploadSingle(field) {
-  return (req, res, next) => {
-    upload.single(field)(req, res, (err) => {
-      if (err) {
-        req.session.flash = { type: 'error', key: 'admin.upload_error' };
-        return res.redirect(req.get('referer') || '/admin/produits');
-      }
-      // CSRF vérifié après multer (corps multipart désormais parsé).
-      if (!assertCsrf(req)) {
-        return res.status(403).send('Jeton CSRF invalide.');
-      }
-      next();
-    });
-  };
+// Accepte l'image principale (champ "image") et des images supplémentaires
+// (champ "images", plusieurs). CSRF vérifié après le parsing multipart.
+function uploadProductImages(req, res, next) {
+  upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'images', maxCount: 5 },
+  ])(req, res, (err) => {
+    if (err) {
+      req.session.flash = { type: 'error', key: 'admin.upload_error' };
+      return res.redirect(req.get('referer') || '/admin/produits');
+    }
+    if (!assertCsrf(req)) {
+      return res.status(403).send('Jeton CSRF invalide.');
+    }
+    next();
+  });
 }
 
 function buildProductData(v, imagePath) {
@@ -53,6 +55,12 @@ function buildProductData(v, imagePath) {
     slug: slugify(v.data.slug || v.data.name_fr),
     image: imagePath,
   };
+}
+
+// Vérifie le type de contenu (magic bytes) de chaque fichier AVANT toute
+// écriture, pour éviter des fichiers orphelins ou une suppression partielle.
+function allImagesValid(buffers) {
+  return buffers.every((b) => image.detectType(b) !== null);
 }
 
 // Tableau de bord
@@ -85,24 +93,26 @@ router.get('/produits', (req, res) => {
 
 // Produits — création
 router.get('/produits/nouveau', (req, res) => {
-  res.render('admin/product-form', { title: 'admin', product: null, categories: category.listAll() });
+  res.render('admin/product-form', { title: 'admin', product: null, categories: category.listAll(), images: [] });
 });
-router.post('/produits/nouveau', uploadSingle('image'), (req, res) => {
+router.post('/produits/nouveau', uploadProductImages, (req, res) => {
   const v = validate.product(req.body);
   if (!v.ok) {
     req.session.flash = { type: 'error', key: 'admin.invalid_data' };
     return res.redirect('/admin/produits/nouveau');
   }
   let imagePath = '';
-  if (req.file) {
-    try {
-      imagePath = image.saveImage(req.file.buffer);
-    } catch (_) {
-      req.session.flash = { type: 'error', key: 'admin.upload_invalid' };
-      return res.redirect('/admin/produits/nouveau');
-    }
+  const mainFile = req.files && req.files.image && req.files.image[0];
+  const extraFiles = (req.files && req.files.images) || [];
+  const allBuffers = [...(mainFile ? [mainFile.buffer] : []), ...extraFiles.map((f) => f.buffer)];
+  if (!allImagesValid(allBuffers)) {
+    req.session.flash = { type: 'error', key: 'admin.upload_invalid' };
+    return res.redirect('/admin/produits/nouveau');
   }
-  product.create(buildProductData(v, imagePath));
+  if (mainFile) imagePath = image.saveImage(mainFile.buffer);
+  const extraPaths = extraFiles.map((f) => image.saveImage(f.buffer));
+  const created = product.create(buildProductData(v, imagePath));
+  if (extraPaths.length) product.addImages(created.id, extraPaths);
   res.redirect('/admin/produits');
 });
 
@@ -110,9 +120,14 @@ router.post('/produits/nouveau', uploadSingle('image'), (req, res) => {
 router.get('/produits/:id', (req, res) => {
   const p = product.findById(req.params.id);
   if (!p) return res.redirect('/admin/produits');
-  res.render('admin/product-form', { title: 'admin', product: p, categories: category.listAll() });
+  res.render('admin/product-form', {
+    title: 'admin',
+    product: p,
+    categories: category.listAll(),
+    images: product.listImages(p.id),
+  });
 });
-router.post('/produits/:id', uploadSingle('image'), (req, res) => {
+router.post('/produits/:id', uploadProductImages, (req, res) => {
   const p = product.findById(req.params.id);
   if (!p) return res.redirect('/admin/produits');
   const v = validate.product(req.body);
@@ -121,21 +136,40 @@ router.post('/produits/:id', uploadSingle('image'), (req, res) => {
     return res.redirect('/admin/produits/' + p.id);
   }
   let imagePath = p.image;
-  if (req.file) {
-    try {
-      imagePath = image.saveImage(req.file.buffer);
-      image.removeImage(p.image); // remplace l'ancienne image
-    } catch (_) {
-      req.session.flash = { type: 'error', key: 'admin.upload_invalid' };
-      return res.redirect('/admin/produits/' + p.id);
-    }
+  const mainFile = req.files && req.files.image && req.files.image[0];
+  const extraFiles = (req.files && req.files.images) || [];
+  const allBuffers = [...(mainFile ? [mainFile.buffer] : []), ...extraFiles.map((f) => f.buffer)];
+  if (!allImagesValid(allBuffers)) {
+    req.session.flash = { type: 'error', key: 'admin.upload_invalid' };
+    return res.redirect('/admin/produits/' + p.id);
   }
+  if (mainFile) {
+    imagePath = image.saveImage(mainFile.buffer);
+    image.removeImage(p.image); // remplace l'ancienne image principale
+  }
+  const extraPaths = extraFiles.map((f) => image.saveImage(f.buffer));
   product.update(p.id, buildProductData(v, imagePath));
+  if (extraPaths.length) product.addImages(p.id, extraPaths);
   res.redirect('/admin/produits');
+});
+
+// Supprime une image supplémentaire (l'image principale reste gérée à part).
+router.post('/produits/:id/images/:imageId/supprimer', (req, res) => {
+  const p = product.findById(req.params.id);
+  if (!p) return res.redirect('/admin/produits');
+  const img = product.listImages(p.id).find((im) => im.id === parseInt(req.params.imageId, 10));
+  if (img) {
+    image.removeImage(img.path);
+    product.deleteImage(img.id);
+  }
+  res.redirect('/admin/produits/' + p.id);
 });
 router.post('/produits/:id/supprimer', (req, res) => {
   const p = product.findById(req.params.id);
-  if (p) image.removeImage(p.image);
+  if (p) {
+    image.removeImage(p.image);
+    for (const im of product.listImages(p.id)) image.removeImage(im.path);
+  }
   product.remove(req.params.id);
   res.redirect('/admin/produits');
 });

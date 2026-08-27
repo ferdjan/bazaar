@@ -30,6 +30,9 @@ module.exports = {
   deliveryFeeDzd: parseInt(process.env.DELIVERY_FEE_DZD || '600', 10),
   adminEmail: process.env.ADMIN_EMAIL || 'admin@example.com',
   adminPassword: process.env.ADMIN_PASSWORD || 'admin123',
+  // Numéro WhatsApp au format international sans "+" (ex. 213555123456).
+  // Utilisé pour le bouton "Commander via WhatsApp". Vide = bouton masqué.
+  whatsappNumber: (process.env.WHATSAPP_NUMBER || '').replace(/[^0-9]/g, ''),
   stripe: {
     secretKey: process.env.STRIPE_SECRET_KEY || '',
     publicKey: process.env.STRIPE_PUBLIC_KEY || '',

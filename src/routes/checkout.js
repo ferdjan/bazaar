@@ -6,6 +6,8 @@ const { getCart, validateCart, clearCart } = require('../services/cart');
 const { dzdToEurString } = require('../services/currency');
 const validate = require('../services/validate');
 const { paymentLimiter } = require('../middleware/rateLimit');
+const mail = require('../services/mail');
+const logger = require('../services/logger');
 
 // Sous-total + frais de livraison forfaitaires (DELIVERY_FEE_DZD).
 function totals(subtotal) {
@@ -104,6 +106,24 @@ router.post('/commande', paymentLimiter, (req, res, next) => {
   }
 
   clearCart(req);
+
+  // Notification admin (fire-and-forget) : n'échoue jamais la commande.
+  if (mail.isConfigured()) {
+    const itemsText = order.items.map((it) => `- ${it.name} x${it.qty} = ${it.price_dzd * it.qty} DA`).join('\n');
+    mail.sendMail({
+      to: config.adminEmail,
+      subject: `Nouvelle commande ${order.ref} (${order.payment_method})`,
+      text: [
+        `Nouvelle commande : ${order.ref}`,
+        `Client : ${order.nom} — ${order.telephone}`,
+        `Ville : ${order.ville}`,
+        `Montant : ${order.total_dzd} DA (${order.payment_method})`,
+        '',
+        itemsText,
+      ].join('\n'),
+    }).catch((err) => logger.warn('échec notification admin', { ref: order.ref, err: err.message }));
+  }
+
   res.redirect('/paiement/' + v.form.payment_method + '/' + order.ref);
 });
 

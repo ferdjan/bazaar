@@ -4,16 +4,24 @@ const config = require('../config');
 const product = require('../models/product');
 const validate = require('../services/validate');
 const { getCart } = require('../services/cart');
+const { buildCartLink } = require('../services/whatsapp');
 
 router.get('/panier', (req, res) => {
   const cart = getCart(req);
   const delivery = config.deliveryFeeDzd;
+  const lang = (req.session && req.session.lang) || 'fr';
+  const whatsappLink = buildCartLink(
+    cart.items,
+    { subtotal: cart.total, delivery, total: cart.total + delivery },
+    lang
+  );
   res.render('pages/cart', {
     title: 'cart',
     items: cart.items,
     subtotal: cart.total,
     delivery,
     total: cart.total + delivery,
+    whatsappLink,
   });
 });
 

@@ -13,6 +13,7 @@ const strings = {
   'nav.register': { fr: 'Inscription', ar: 'إنشاء حساب' },
   'nav.logout': { fr: 'Déconnexion', ar: 'تسجيل الخروج' },
   'brand.tagline': { fr: 'Vêtements · Chaussures · Accessoires', ar: 'ملابس · أحذية · إكسسوارات' },
+  'seo.site_desc': { fr: 'Boutique en ligne en Algérie : vêtements, chaussures et accessoires. Paiement à la livraison partout en Algérie.', ar: 'متجر إلكتروني في الجزائر: ملابس، أحذية وإكسسوارات. الدفع عند الاستلام في جميع أنحاء الجزائر.' },
   'announce.text': { fr: 'Livraison 58 wilayas · Paiement à la livraison', ar: 'التوصيل إلى 58 ولاية · الدفع عند الاستلام' },
 
   // Catalogue
@@ -27,6 +28,7 @@ const strings = {
   'product.size': { fr: 'Taille', ar: 'المقاس' },
   'product.related': { fr: 'Produits similaires', ar: 'منتجات مشابهة' },
   'product.shipping_flat': { fr: 'Livraison 600 DA', ar: 'التوصيل 600 دج' },
+  'product.whatsapp': { fr: 'Commander ce produit via WhatsApp', ar: 'اطلب هذا المنتج عبر واتساب' },
   'product.stock_limited': { fr: 'Stock limité', ar: 'كمية محدودة' },
 
   // Panier
@@ -44,6 +46,7 @@ const strings = {
   'cart.shipping': { fr: 'Livraison', ar: 'التوصيل' },
   'cart.shipping_free': { fr: 'Gratuite', ar: 'مجاني' },
   'cart.total_due': { fr: 'Total à payer', ar: 'المجموع الواجب دفعه' },
+  'cart.whatsapp': { fr: 'Commander via WhatsApp', ar: 'اطلب عبر واتساب' },
   'cart.invalid': { fr: 'Contenu du panier invalide.', ar: 'محتوى السلة غير صالح.' },
   'cart.unavailable': { fr: 'Un produit n\'est plus disponible.', ar: 'أحد المنتجات لم يعد متاحاً.' },
   'cart.invalid_size': { fr: 'Taille invalide pour un produit.', ar: 'مقاس غير صالح لأحد المنتجات.' },
@@ -169,11 +172,14 @@ const strings = {
   'admin.sizes_hint': { fr: 'Sépare les tailles par des virgules, ex. : S,M,L,XL ou 40,41,42.', ar: 'افصل المقاسات بفواصل، مثال: S,M,L,XL أو 40,41,42.' },
   'admin.category': { fr: 'Catégorie', ar: 'الفئة' },
   'admin.image': { fr: 'Image', ar: 'الصورة' },
+  'admin.images': { fr: 'Images supplémentaires', ar: 'صور إضافية' },
+  'admin.images_hint': { fr: 'Ajoutez jusqu’à 5 images supplémentaires (galerie).', ar: 'أضف حتى 5 صور إضافية (معرض).' },
   'admin.active': { fr: 'Actif', ar: 'نشط' },
   'admin.save': { fr: 'Enregistrer', ar: 'حفظ' },
   'admin.cancel': { fr: 'Annuler', ar: 'إلغاء' },
   'admin.edit': { fr: 'Modifier', ar: 'تعديل' },
   'admin.delete': { fr: 'Supprimer', ar: 'حذف' },
+  'admin.delete_image': { fr: 'Retirer', ar: 'إزالة' },
   'admin.actions': { fr: 'Actions', ar: 'إجراءات' },
   'admin.updated_status': { fr: 'Statut mis à jour.', ar: 'تم تحديث الحالة.' },
   'admin.action_done': { fr: 'Action effectuée.', ar: 'تم تنفيذ الإجراء.' },

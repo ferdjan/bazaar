@@ -4,6 +4,7 @@ const { formatDzd } = require('../services/currency');
 const { formatDate } = require('../services/date');
 const { buildTimeline } = require('../services/orderStatus');
 const category = require('../models/category');
+const config = require('../config');
 
 function cartCount(req) {
   const cart = (req.session && req.session.cart) || {};
@@ -29,6 +30,7 @@ function locals(req, res, next) {
   res.locals.cartCount = cartCount(req);
   res.locals.path = req.path;
   res.locals.categories = category.listAll();
+  res.locals.baseUrl = config.baseUrl.replace(/\/$/, '');
   res.locals.flash = (req.session && req.session.flash) || null;
   if (req.session) req.session.flash = null;
   next();

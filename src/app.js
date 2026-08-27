@@ -103,6 +103,7 @@ function createApp() {
   app.use('/', require('./routes/checkout'));
   app.use('/', require('./routes/payments'));
   app.use('/', require('./routes/scan'));
+  app.use('/', require('./routes/seo'));
   app.use('/admin', require('./routes/admin'));
 
   // 404

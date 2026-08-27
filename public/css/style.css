@@ -136,6 +136,9 @@ main.container { padding-top: 36px; padding-bottom: 56px; min-height: 50vh; }
 .btn-danger { background: transparent; border-color: rgba(224, 92, 92, 0.55); color: var(--danger); }
 .btn-danger:hover { background: rgba(224, 92, 92, 0.12); border-color: var(--danger); color: #ff9c9c; }
 
+.btn-whatsapp { background: #128c4a; border-color: #25d366; color: #eafff1; }
+.btn-whatsapp:hover { background: #1aa85a; border-color: #25d366; color: #ffffff; box-shadow: 0 10px 30px rgba(37, 211, 102, 0.28); }
+
 .btn-sm { padding: 7px 16px; font-size: 0.76rem; }
 .btn-lg { padding: 17px 40px; font-size: 0.94rem; }
 .btn.block { display: flex; width: 100%; text-align: center; margin-top: 14px; }
@@ -727,6 +730,11 @@ label { display: block; margin: 16px 0 6px; font-weight: 600; font-size: 0.82rem
 }
 .thumb.lg { width: 84px; height: 84px; }
 .thumb.placeholder svg { width: 20px; height: 20px; }
+
+.product-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; margin-top: 12px; }
+.product-gallery img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-soft); cursor: pointer; }
+.image-gallery { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0; }
+.image-gallery-item { display: flex; flex-direction: column; gap: 6px; align-items: center; }
 
 /* --------------------------------------------------------------------------
    Admin

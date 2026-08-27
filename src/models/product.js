@@ -69,6 +69,22 @@ function remove(id) {
   db.prepare('DELETE FROM products WHERE id = ?').run(id);
 }
 
+// --- Images multiples (en plus de l'image principale `products.image`) ---
+
+function listImages(productId) {
+  return db.prepare('SELECT * FROM product_images WHERE product_id = ? ORDER BY position ASC, id ASC').all(productId);
+}
+
+function addImages(productId, paths) {
+  const insert = db.prepare('INSERT INTO product_images (product_id, path, position) VALUES (?, ?, ?)');
+  const count = listImages(productId).length;
+  (paths || []).forEach((p, i) => insert.run(productId, p, count + i));
+}
+
+function deleteImage(imageId) {
+  db.prepare('DELETE FROM product_images WHERE id = ?').run(imageId);
+}
+
 function countLowStock(threshold = 5) {
   return db.prepare('SELECT COUNT(*) AS n FROM products WHERE stock <= ?').get(threshold).n;
 }
@@ -80,4 +96,5 @@ function count() {
 module.exports = {
   findById, findBySlug, listAll, listActive, listByCategory,
   create, update, remove, countLowStock, count,
+  listImages, addImages, deleteImage,
 };

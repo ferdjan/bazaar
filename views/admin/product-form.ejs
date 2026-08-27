@@ -36,9 +36,27 @@
     <% if (product && product.image) { %><img src="<%= product.image %>" class="thumb lg" alt=""><% } %>
     <input id="image" type="file" name="image" accept="image/*">
 
+    <label for="images"><%= t('admin.images') %></label>
+    <input id="images" type="file" name="images" accept="image/*" multiple>
+    <p class="muted"><%= t('admin.images_hint') %></p>
+
     <label class="radio"><input type="checkbox" name="active" value="1" <%= (!product || product.active) ? 'checked' : '' %>> <%= t('admin.active') %></label>
 
     <button type="submit" class="btn btn-primary block"><%= t('admin.save') %></button>
   </form>
+
+  <% if (product && images && images.length) { %>
+    <div class="image-gallery">
+      <% images.forEach(function(im){ %>
+        <div class="image-gallery-item">
+          <img src="<%= im.path %>" class="thumb" alt="">
+          <form method="post" action="/admin/produits/<%= product.id %>/images/<%= im.id %>/supprimer" class="inline-form">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
+            <button type="submit" class="btn btn-danger btn-sm"><%= t('admin.delete_image') %></button>
+          </form>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
 </main>
 <%- include('../partials/footer') %>
