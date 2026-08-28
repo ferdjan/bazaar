@@ -31,7 +31,9 @@ function requestLogger(req, res, next) {
     logger.info('http', {
       reqId: req.id,
       method: req.method,
-      path: req.originalUrl,
+      // Ne jamais écrire les query params : ils peuvent contenir des tokens
+      // Stripe/PayPal ou des références de réinitialisation.
+      path: req.path,
       status: res.statusCode,
       durMs: Math.round(durMs * 10) / 10,
     });

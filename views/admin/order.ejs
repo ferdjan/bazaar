@@ -30,13 +30,6 @@
   <section class="admin-actions">
     <h2><%= t('admin.actions') %></h2>
     <div class="actions">
-      <% if (order.status === 'livree' && order.payment_method === 'cod') { %>
-        <form method="post" action="/admin/commandes/<%= order.ref %>/action">
-          <input type="hidden" name="_csrf" value="<%= csrf %>">
-          <input type="hidden" name="action" value="pay">
-          <button type="submit" class="btn btn-primary"><%= t('order.continue_payment') %></button>
-        </form>
-      <% } %>
       <% if (order.status === 'payee' || (order.status === 'en_attente' && order.payment_method === 'cod')) { %>
         <form method="post" action="/admin/commandes/<%= order.ref %>/action" class="action-form">
           <input type="hidden" name="_csrf" value="<%= csrf %>">
@@ -99,7 +92,7 @@
   <form method="post" action="/admin/commandes/<%= order.ref %>/statut" class="filters">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
     <select name="status">
-      <% ['en_attente','payee','expediee','livree','annulee'].forEach(function(s){ %>
+      <% ['en_attente','expediee','livree','annulee'].forEach(function(s){ %>
         <option value="<%= s %>" <%= order.status === s ? 'selected' : '' %>><%= t('status.' + s) %></option>
       <% }) %>
     </select>

@@ -264,7 +264,9 @@ function setStatus(ref, status, opts = {}) {
   if (!order) return false;
 
   const steps = stepsFor(order.payment_method);
-  if (status === 'payee' && order.payment_method === 'cod' && opts.actorRole !== 'seller') return false;
+  // Le statut payé est réservé aux confirmations vérifiées : webhook Stripe/
+  // PayPal ou encaissement COD via confirmCodPayment. Jamais au formulaire admin.
+  if (status === 'payee') return false;
   const idx = steps.indexOf(status);
   const payeeIdx = steps.indexOf('payee');
   const parts = [`status = '${status}'`]; // valeur déjà validée par la whitelist

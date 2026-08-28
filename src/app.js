@@ -115,7 +115,7 @@ function createApp() {
     logger.error('erreur serveur', {
       reqId: req.id,
       method: req.method,
-      path: req.originalUrl,
+      path: req.path,
       err: err && err.message ? err.message : String(err),
       stack: err && err.stack,
     });

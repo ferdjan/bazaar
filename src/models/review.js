@@ -26,13 +26,14 @@ function findForUser(productId, userId) {
   return db.prepare('SELECT * FROM reviews WHERE product_id = ? AND user_id = ?').get(productId, userId) || null;
 }
 
-// Vérifie qu'un utilisateur a déjà commandé ce produit (et pas annulé).
+// Vérifie qu'un utilisateur a reçu le produit : une commande seulement créée
+// ou expédiée ne suffit pas pour publier un avis.
 function hasOrdered(userId, productId) {
   return !!db.prepare(`
     SELECT 1
     FROM orders o
     JOIN order_items i ON i.order_id = o.id
-    WHERE o.user_id = ? AND i.product_id = ? AND o.status != 'annulee'
+    WHERE o.user_id = ? AND i.product_id = ? AND o.status IN ('livree', 'payee')
     LIMIT 1
   `).get(userId, productId);
 }

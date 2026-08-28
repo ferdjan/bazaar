@@ -134,6 +134,7 @@ router.post('/commande', paymentLimiter, (req, res, next) => {
   }
 
   clearCart(req);
+  req.session.paymentRefs = (req.session.paymentRefs || []).filter((r) => r !== order.ref).concat(order.ref).slice(-20);
   delete req.session.coupon;
 
   // Notification admin (fire-and-forget) : n'échoue jamais la commande.

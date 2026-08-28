@@ -36,6 +36,9 @@ services:
         value: "0.0045"
       - key: DELIVERY_FEE_DZD
         value: "600"
+      # Numéro WhatsApp au format international sans +.
+      - key: WHATSAPP_NUMBER
+        sync: false
       # Paiements en ligne (optionnel : laisser vide = seul le paiement à la
       # livraison fonctionne).
       - key: STRIPE_SECRET_KEY

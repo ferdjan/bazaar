@@ -9,11 +9,19 @@ const { logger } = require('../services/logger');
 
 const ONLINE = ['stripe', 'paypal'];
 
+function canAccessPayment(req, order) {
+  const user = req.session && req.session.user;
+  if (user && (user.role === 'admin' || order.user_id === user.id)) return true;
+  const refs = (req.session && req.session.paymentRefs) || [];
+  return refs.includes(order.ref);
+}
+
 // GET : affichage uniquement, AUCUNE opération financière.
 router.get('/paiement/:method/:ref', (req, res) => {
   const { method, ref } = req.params;
   const order = orderModel.findByRef(ref);
   if (!order) return res.status(404).render('pages/404', { title: '404' });
+  if (!canAccessPayment(req, order)) return res.status(404).render('pages/404', { title: '404' });
 
   if (method === 'cod') {
     return res.render('pages/order-confirmation', { title: 'order', order });
@@ -30,6 +38,7 @@ router.post('/paiement/:method/:ref', paymentLimiter, async (req, res, next) => 
   const { method, ref } = req.params;
   const order = orderModel.findByRef(ref);
   if (!order) return res.status(404).render('pages/404', { title: '404' });
+  if (!canAccessPayment(req, order)) return res.status(404).render('pages/404', { title: '404' });
   if (!ONLINE.includes(method) || order.payment_method !== method) {
     return res.redirect('/commande/' + ref);
   }

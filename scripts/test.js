@@ -593,6 +593,20 @@ function makeOrder(method, totalDzd) {
   orderModel.setStatus(oSt.ref, 'en_attente', {});
   ok('en_attente ne marque jamais payée', orderModel.findByRef(oSt.ref).payment_status === 'pending');
 
+  // L'admin ne peut plus forcer "payée" manuellement, même pour Stripe/PayPal.
+  const oManual = makeOrder('stripe', 1200);
+  ok('setStatus payee bloqué (stripe)', orderModel.setStatus(oManual.ref, 'payee', { actorRole: 'admin' }) === false);
+  ok('stripe reste pending après tentative manuelle', orderModel.findByRef(oManual.ref).payment_status === 'pending');
+  const oManualCod = makeOrder('cod', 900);
+  orderModel.setStatus(oManualCod.ref, 'livree', {});
+  ok('setStatus payee bloqué (cod)', orderModel.setStatus(oManualCod.ref, 'payee', { actorRole: 'admin' }) === false);
+
+  // Un avis exige une commande livrée/payée : une commande en attente ne suffit pas.
+  const reviewEarly = require('../src/models/review');
+  const oEarly = makeOrder('cod', 500);
+  const earlyUser = db.prepare("SELECT id FROM users WHERE role='seller'").get();
+  ok('commande en attente ne permet pas un avis', reviewEarly.hasOrdered(earlyUser.id, 1) === false);
+
   // Cohérence COD : une régression de payee -> livree doit repasser pending.
   const oReg = makeOrder('cod', 700);
   orderModel.setStatus(oReg.ref, 'livree', {});
@@ -624,6 +638,11 @@ function makeOrder(method, totalDzd) {
     telephone: '0550123456', adresse: '12 Rue X', ville: 'Alger', payment_method: 'cod',
   });
   ok('avis : commande -> 302', res.status === 302);
+  const reviewOrderRef = (res.headers.location || '').split('/').pop();
+  // L'avis exige une commande livrée/payée : on simule le parcours logistique.
+  orderModel.setStatus(reviewOrderRef, 'expediee', {});
+  orderModel.setStatus(reviewOrderRef, 'livree', {});
+  orderModel.confirmCodPayment(reviewOrderRef, db.prepare("SELECT id FROM users WHERE role='seller'").get().id, 'seller');
 
   // Dépôt d'avis valide.
   res = await reviewer.get('/produit/t-shirt-coton');
