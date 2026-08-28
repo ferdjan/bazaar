@@ -71,6 +71,10 @@ function migrate() {
   if (!cols.includes('coupon_code')) db.exec("ALTER TABLE orders ADD COLUMN coupon_code TEXT NOT NULL DEFAULT ''");
   if (!cols.includes('discount_dzd')) db.exec('ALTER TABLE orders ADD COLUMN discount_dzd INTEGER NOT NULL DEFAULT 0');
 
+  // Répare les anciennes commandes COD marquées payées mais restées livrées.
+  // Cette combinaison est incohérente : le paiement validé est l'étape finale.
+  db.exec("UPDATE orders SET status = 'payee', paid_at = COALESCE(paid_at, datetime('now')) WHERE payment_method = 'cod' AND status = 'livree' AND payment_status = 'paid'");
+
   const ucols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
   if (!ucols.includes('reset_token')) {
     db.exec("ALTER TABLE users ADD COLUMN reset_token TEXT NOT NULL DEFAULT ''");

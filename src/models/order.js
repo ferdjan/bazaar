@@ -201,13 +201,13 @@ function confirmCodPayment(ref, actorId, actorRole) {
     const order = db.prepare(
       "SELECT id, status, payment_method, payment_status FROM orders WHERE ref = ?"
     ).get(ref);
-    if (!order || order.payment_method !== 'cod' || order.status !== 'livree' || order.payment_status !== 'pending') {
+    if (!order || order.payment_method !== 'cod' || order.status !== 'livree' || !['pending', 'paid'].includes(order.payment_status)) {
       return false;
     }
     const changed = db.prepare(`
       UPDATE orders
       SET status = 'payee', payment_status = 'paid', paid_at = COALESCE(paid_at, datetime('now'))
-      WHERE id = ? AND status = 'livree' AND payment_method = 'cod' AND payment_status = 'pending'
+      WHERE id = ? AND status = 'livree' AND payment_method = 'cod' AND payment_status IN ('pending', 'paid')
     `).run(order.id);
     if (changed.changes !== 1) return false;
     recordHistory(order.id, 'livree', 'payee', { actorId, action: 'pay' });

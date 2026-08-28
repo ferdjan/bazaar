@@ -275,7 +275,8 @@ function makeOrder(method, totalDzd) {
   ok('vendeur ouvre un QR', res.status === 200 && res.text.includes(codOrderDb.ref));
   csrf = extractCsrf(res.text);
   res = await seller.post('/scan/payer').type('form').send({ _csrf: csrf, token: sellerLabelToken });
-  ok('vendeur confirme le paiement COD via QR', res.status === 302 && orderModel.findByRef(codOrderDb.ref).payment_status === 'paid');
+  const scannedOrder = orderModel.findByRef(codOrderDb.ref);
+  ok('vendeur confirme le paiement COD via QR', res.status === 302 && scannedOrder.status === 'payee' && scannedOrder.payment_status === 'paid');
   ok('double confirmation vendeur refusée', orderModel.confirmCodPayment(codOrderDb.ref, 2, 'seller') === false);
   res = await seller.get('/admin');
   ok('vendeur ne peut pas ouvrir admin', res.status === 403);
