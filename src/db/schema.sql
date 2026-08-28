@@ -52,6 +52,19 @@ CREATE TABLE IF NOT EXISTS reviews (
   UNIQUE (product_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS coupons (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  code       TEXT NOT NULL UNIQUE,
+  type       TEXT NOT NULL CHECK (type IN ('percent', 'fixed')),
+  value      INTEGER NOT NULL CHECK (value >= 0),
+  min_amount INTEGER NOT NULL DEFAULT 0,
+  max_uses   INTEGER NOT NULL DEFAULT 0,
+  used_count INTEGER NOT NULL DEFAULT 0,
+  active     INTEGER NOT NULL DEFAULT 1,
+  expires_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS orders (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   ref            TEXT NOT NULL UNIQUE,
@@ -76,6 +89,8 @@ CREATE TABLE IF NOT EXISTS orders (
   stock_released INTEGER NOT NULL DEFAULT 0,
   refund_dzd     INTEGER NOT NULL DEFAULT 0,
   returned_at    TEXT,
+  coupon_code    TEXT NOT NULL DEFAULT '',
+  discount_dzd   INTEGER NOT NULL DEFAULT 0,
   nom            TEXT NOT NULL,
   email          TEXT NOT NULL,
   telephone      TEXT NOT NULL,

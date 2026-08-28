@@ -29,6 +29,20 @@ function withItems(order) {
 const createTx = db.transaction((data) => {
   const ref = generateRef();
 
+  // Réserve le coupon AVANT le décrément de stock, dans la même transaction :
+  // un usage unique ne peut pas être consommé deux fois, et un échec annule
+  // toute la commande (idempotent, atomique).
+  if (data.order.coupon_code) {
+    const r = db.prepare(
+      'UPDATE coupons SET used_count = used_count + 1 WHERE code = ? AND active = 1 AND (max_uses = 0 OR used_count < max_uses)'
+    ).run(data.order.coupon_code);
+    if (r.changes !== 1) {
+      const err = new Error('coupon invalide ou épuisé');
+      err.code = 'COUPON_INVALID';
+      throw err;
+    }
+  }
+
   const decStock = db.prepare(
     'UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ? AND active = 1'
   );
@@ -45,12 +59,18 @@ const createTx = db.transaction((data) => {
   const insOrder = db.prepare(`
     INSERT INTO orders
       (ref, user_id, status, total_dzd, total_eur, delivery_dzd, payment_method, payment_status,
-       provider_id, nom, email, telephone, adresse, ville)
+       provider_id, nom, email, telephone, adresse, ville, coupon_code, discount_dzd)
     VALUES
       (@ref, @user_id, @status, @total_dzd, @total_eur, @delivery_dzd, @payment_method, @payment_status,
-       @provider_id, @nom, @email, @telephone, @adresse, @ville)
+       @provider_id, @nom, @email, @telephone, @adresse, @ville, @coupon_code, @discount_dzd)
   `);
-  const info = insOrder.run({ ...data.order, ref, delivery_dzd: data.order.delivery_dzd || 0 });
+  const info = insOrder.run({
+    ...data.order,
+    ref,
+    delivery_dzd: data.order.delivery_dzd || 0,
+    coupon_code: data.order.coupon_code || '',
+    discount_dzd: data.order.discount_dzd || 0,
+  });
   const orderId = info.lastInsertRowid;
 
   const insItem = db.prepare(

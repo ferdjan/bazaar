@@ -68,6 +68,8 @@ function migrate() {
   if (!cols.includes('stock_released')) db.exec('ALTER TABLE orders ADD COLUMN stock_released INTEGER NOT NULL DEFAULT 0');
   if (!cols.includes('refund_dzd')) db.exec('ALTER TABLE orders ADD COLUMN refund_dzd INTEGER NOT NULL DEFAULT 0');
   if (!cols.includes('returned_at')) db.exec('ALTER TABLE orders ADD COLUMN returned_at TEXT');
+  if (!cols.includes('coupon_code')) db.exec("ALTER TABLE orders ADD COLUMN coupon_code TEXT NOT NULL DEFAULT ''");
+  if (!cols.includes('discount_dzd')) db.exec('ALTER TABLE orders ADD COLUMN discount_dzd INTEGER NOT NULL DEFAULT 0');
 
   const ucols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
   if (!ucols.includes('reset_token')) {
@@ -127,6 +129,18 @@ function migrate() {
       UNIQUE (product_id, user_id)
     );
     CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id, created_at DESC);
+    CREATE TABLE IF NOT EXISTS coupons (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      type TEXT NOT NULL CHECK (type IN ('percent', 'fixed')),
+      value INTEGER NOT NULL CHECK (value >= 0),
+      min_amount INTEGER NOT NULL DEFAULT 0,
+      max_uses INTEGER NOT NULL DEFAULT 0,
+      used_count INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      expires_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 }
 

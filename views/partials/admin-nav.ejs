@@ -5,6 +5,7 @@
       <a href="/admin" class="<%= path === '/admin' ? 'active' : '' %>"><%= t('admin.dashboard') %></a>
       <a href="/admin/produits" class="<%= path.startsWith('/admin/produits') ? 'active' : '' %>"><%= t('admin.products') %></a>
       <a href="/admin/categories" class="<%= path.startsWith('/admin/categories') ? 'active' : '' %>"><%= t('admin.categories') %></a>
+      <a href="/admin/coupons" class="<%= path.startsWith('/admin/coupons') ? 'active' : '' %>"><%= t('admin.coupons') %></a>
       <a href="/admin/commandes" class="<%= path.startsWith('/admin/commandes') ? 'active' : '' %>"><%= t('admin.orders') %></a>
       <a href="/admin/clients" class="<%= path === '/admin/clients' ? 'active' : '' %>"><%= t('admin.users') %></a>
       <a href="/lang/<%= lang === 'ar' ? 'fr' : 'ar' %>"><%= t('lang.switch') %></a>

@@ -5,14 +5,17 @@ const product = require('../models/product');
 const validate = require('../services/validate');
 const { getCart } = require('../services/cart');
 const { buildCartLink } = require('../services/whatsapp');
+const coupon = require('../models/coupon');
 
 router.get('/panier', (req, res) => {
   const cart = getCart(req);
   const delivery = config.deliveryFeeDzd;
   const lang = (req.session && req.session.lang) || 'fr';
+  const discount = coupon.discountFor(req.session.coupon, cart.total);
+  const total = Math.max(0, cart.total + delivery - (discount || 0));
   const whatsappLink = buildCartLink(
     cart.items,
-    { subtotal: cart.total, delivery, total: cart.total + delivery },
+    { subtotal: cart.total, delivery, total },
     lang
   );
   res.render('pages/cart', {
@@ -20,9 +23,33 @@ router.get('/panier', (req, res) => {
     items: cart.items,
     subtotal: cart.total,
     delivery,
-    total: cart.total + delivery,
+    total,
+    discount: discount || 0,
+    couponCode: (req.session && req.session.coupon) || '',
     whatsappLink,
   });
+});
+
+router.post('/panier/coupon', (req, res) => {
+  const code = validate.couponCode(req.body);
+  if (code) {
+    const cart = getCart(req);
+    if (coupon.discountFor(code, cart.total) !== null) {
+      req.session.coupon = code;
+      req.session.flash = { type: 'success', key: 'coupon.applied' };
+    } else {
+      req.session.flash = { type: 'error', key: 'coupon.invalid' };
+    }
+  } else {
+    req.session.flash = { type: 'error', key: 'coupon.invalid' };
+  }
+  res.redirect('/panier');
+});
+
+router.post('/panier/coupon/retirer', (req, res) => {
+  delete req.session.coupon;
+  req.session.flash = { type: 'success', key: 'coupon.removed' };
+  res.redirect('/panier');
 });
 
 router.post('/panier/ajouter', (req, res) => {

@@ -1,0 +1,60 @@
+<%- include('../partials/head') %>
+<%- include('../partials/admin-nav') %>
+<main class="container">
+  <div class="row-between">
+    <h1><%= t('admin.coupons') %></h1>
+  </div>
+
+  <form method="post" action="/admin/coupons/nouveau" class="coupon-form admin-coupon-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label for="code"><%= t('admin.coupon_code') %></label>
+    <input id="code" type="text" name="coupon" maxlength="50" required>
+    <label for="type"><%= t('admin.coupon_type') %></label>
+    <select id="type" name="type">
+      <option value="percent"><%= t('admin.coupon_percent') %></option>
+      <option value="fixed"><%= t('admin.coupon_fixed') %></option>
+    </select>
+    <label for="value"><%= t('admin.coupon_value') %></label>
+    <input id="value" type="number" name="value" min="0" value="10" required>
+    <label for="min_amount"><%= t('admin.coupon_min') %></label>
+    <input id="min_amount" type="number" name="min_amount" min="0" value="0">
+    <label for="max_uses"><%= t('admin.coupon_uses') %></label>
+    <input id="max_uses" type="number" name="max_uses" min="0" value="0">
+    <label for="expires_at"><%= t('admin.coupon_expires') %></label>
+    <input id="expires_at" type="text" name="expires_at" placeholder="2026-12-31" maxlength="20">
+    <button type="submit" class="btn btn-primary"><%= t('admin.add_coupon') %></button>
+  </form>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th><%= t('admin.coupon_code') %></th>
+        <th><%= t('admin.coupon_type') %></th>
+        <th><%= t('admin.coupon_value') %></th>
+        <th><%= t('admin.coupon_min') %></th>
+        <th><%= t('admin.coupon_uses') %></th>
+        <th><%= t('admin.coupon_expires') %></th>
+        <th><%= t('admin.actions') %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% coupons.forEach(function(c){ %>
+        <tr>
+          <td><strong><%= c.code %></strong></td>
+          <td><%= c.type === 'percent' ? t('admin.coupon_percent') : t('admin.coupon_fixed') %></td>
+          <td><%= c.type === 'percent' ? c.value + '%' : formatDzd(c.value) %></td>
+          <td><%= formatDzd(c.min_amount) %></td>
+          <td><%= c.max_uses === 0 ? '∞' : c.used_count + ' / ' + c.max_uses %></td>
+          <td><%= c.expires_at ? c.expires_at.slice(0, 10) : '—' %></td>
+          <td>
+            <form method="post" action="/admin/coupons/<%= c.id %>/supprimer" class="inline-form">
+              <input type="hidden" name="_csrf" value="<%= csrf %>">
+              <button type="submit" class="btn btn-danger btn-sm"><%= t('admin.delete') %></button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</main>
+<%- include('../partials/footer') %>

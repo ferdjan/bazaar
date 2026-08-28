@@ -2,6 +2,7 @@
 const router = require('express').Router();
 const config = require('../config');
 const orderModel = require('../models/order');
+const coupon = require('../models/coupon');
 const { getCart, validateCart, clearCart } = require('../services/cart');
 const { dzdToEurString } = require('../services/currency');
 const validate = require('../services/validate');
@@ -9,21 +10,31 @@ const { paymentLimiter } = require('../middleware/rateLimit');
 const mail = require('../services/mail');
 const logger = require('../services/logger');
 
-// Sous-total + frais de livraison forfaitaires (DELIVERY_FEE_DZD).
-function totals(subtotal) {
+// Sous-total + frais de livraison forfaitaires (DELIVERY_FEE_DZD), moins la
+// remise coupon éventuelle.
+function totals(subtotal, discount = 0) {
   const delivery = config.deliveryFeeDzd;
-  return { subtotal, delivery, total: subtotal + delivery };
+  return { subtotal, delivery, discount, total: Math.max(0, subtotal + delivery - discount) };
 }
 
-function renderCheckout(res, { items, user, error, form, subtotal }) {
+function renderCheckout(res, { items, user, error, form, subtotal, discount, couponCode }) {
   res.render('pages/checkout', {
     title: 'checkout',
     items,
-    ...totals(subtotal),
+    ...totals(subtotal, discount || 0),
     user,
     error,
     form,
+    couponCode: couponCode || '',
   });
+}
+
+// Calcule la remise coupon valide pour la session, sinon 0.
+function sessionDiscount(req, subtotal) {
+  const code = (req.session && req.session.coupon) || '';
+  if (!code) return { discount: 0, code: '' };
+  const d = coupon.discountFor(code, subtotal);
+  return d === null ? { discount: 0, code: '' } : { discount: d, code };
 }
 
 router.get('/commande', (req, res) => {
@@ -33,12 +44,15 @@ router.get('/commande', (req, res) => {
   }
   const cart = getCart(req);
   if (!cart.items.length) return res.redirect('/panier');
+  const sc = sessionDiscount(req, cart.total);
   renderCheckout(res, {
     items: cart.items,
     user: req.session.user || null,
     error: undefined,
     form: null,
     subtotal: cart.total,
+    discount: sc.discount,
+    couponCode: sc.code,
   });
 });
 
@@ -67,8 +81,11 @@ router.post('/commande', paymentLimiter, (req, res, next) => {
     });
   }
 
-  // 3. Création atomique commande + décrément de stock (vérifié côté SQL).
-  const t = totals(checked.total);
+  // 3. Remise coupon (recalculée côté serveur, jamais depuis le navigateur).
+  const sc = sessionDiscount(req, checked.total);
+
+  // 4. Création atomique commande + décrément de stock (vérifié côté SQL).
+  const t = totals(checked.total, sc.discount);
   let order;
   try {
     order = orderModel.create({
@@ -86,6 +103,8 @@ router.post('/commande', paymentLimiter, (req, res, next) => {
         telephone: v.form.telephone,
         adresse: v.form.adresse,
         ville: v.form.ville,
+        coupon_code: sc.code,
+        discount_dzd: sc.discount,
       },
       items: checked.items.map((it) => ({
         productId: it.product.id,
@@ -100,12 +119,22 @@ router.post('/commande', paymentLimiter, (req, res, next) => {
       return renderCheckout(res, {
         items: cart.items, user: req.session.user || null,
         error: 'cart.insufficient_stock', form: v.form, subtotal: checked.total,
+        discount: sc.discount, couponCode: sc.code,
+      });
+    }
+    if (err && err.code === 'COUPON_INVALID') {
+      delete req.session.coupon;
+      return renderCheckout(res, {
+        items: cart.items, user: req.session.user || null,
+        error: 'coupon.invalid', form: v.form, subtotal: checked.total,
+        discount: 0, couponCode: '',
       });
     }
     return next(err);
   }
 
   clearCart(req);
+  delete req.session.coupon;
 
   // Notification admin (fire-and-forget) : n'échoue jamais la commande.
   if (mail.isConfigured()) {

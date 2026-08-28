@@ -29,6 +29,7 @@
       <p class="line"><%= pname(it.product) %><% if (it.size) { %> (<%= t('product.size') %> <%= it.size %>)<% } %> × <%= it.qty %> — <strong><%= formatDzd(it.lineTotal) %></strong></p>
     <% }) %>
     <p class="line"><%= t('cart.subtotal') %> : <strong><%= formatDzd(subtotal) %></strong></p>
+    <% if (discount) { %><p class="line discount"><%= t('coupon.discount') %> (<%= couponCode %>) : <strong>−<%= formatDzd(discount) %></strong></p><% } %>
     <p class="line"><%= t('cart.shipping') %> : <strong><%= formatDzd(delivery) %></strong></p>
     <p class="total"><%= t('cart.total_due') %> : <strong><%= formatDzd(total) %></strong></p>
 

@@ -653,6 +653,64 @@ function makeOrder(method, totalDzd) {
   ok('fiche produit affiche la section avis', /reviews-section/.test(res.text));
   ok('fiche produit affiche le commentaire', /Très bon produit/.test(res.text));
 
+  // ---- Codes promo ----------------------------------------------------------
+  const coupon = require('../src/models/coupon');
+
+  // Coupon pourcentage valide.
+  coupon.create({ code: 'PROMO10', type: 'percent', value: 10, min_amount: 0, max_uses: 0, active: true, expires_at: null });
+  ok('coupon pourcentage -> 10% de remise', coupon.discountFor('PROMO10', 1000) === 100);
+  ok('coupon insensible à la casse', coupon.discountFor('promo10', 1000) === 100);
+
+  // Coupon montant fixe, plafonné au sous-total.
+  coupon.create({ code: 'FIXE500', type: 'fixed', value: 500, min_amount: 0, max_uses: 0, active: true, expires_at: null });
+  ok('coupon fixe -> 500 DA de remise', coupon.discountFor('FIXE500', 2000) === 500);
+  ok('coupon fixe plafonné au sous-total', coupon.discountFor('FIXE500', 300) === 300);
+
+  // Coupon avec montant minimum non atteint.
+  coupon.create({ code: 'MIN1000', type: 'fixed', value: 100, min_amount: 1000, max_uses: 0, active: true, expires_at: null });
+  ok('coupon min non atteint -> refusé', coupon.discountFor('MIN1000', 500) === null);
+
+  // Coupon expiré.
+  coupon.create({ code: 'EXPIRE', type: 'percent', value: 50, min_amount: 0, max_uses: 0, active: true, expires_at: '2020-01-01T00:00:00.000Z' });
+  ok('coupon expiré -> refusé', coupon.discountFor('EXPIRE', 1000) === null);
+
+  // Coupon à usage limité : la réservation se fait dans la transaction de commande.
+  coupon.create({ code: 'ONCE', type: 'percent', value: 20, min_amount: 0, max_uses: 1, active: true, expires_at: null });
+  ok('coupon usage limité -> 1re fois OK', coupon.discountFor('ONCE', 1000) === 200);
+  orderModel.create({
+    order: { user_id: null, status: 'en_attente', total_dzd: 1400, total_eur: '6.30', delivery_dzd: 600,
+      payment_method: 'cod', payment_status: 'pending', provider_id: '', nom: 'Coupon', email: 'c@test.com',
+      telephone: '0550123456', adresse: '1 Rue C', ville: 'Alger', coupon_code: 'ONCE', discount_dzd: 200 },
+    items: [{ productId: 2, name: 'Chemise oxford', priceDzd: 1400, qty: 1, size: 'M' }],
+  });
+  ok('coupon épuisé après commande -> refusé', coupon.discountFor('ONCE', 1000) === null);
+  let couponError = null;
+  try {
+    orderModel.create({
+      order: { user_id: null, status: 'en_attente', total_dzd: 700, total_eur: '3.15', delivery_dzd: 600,
+        payment_method: 'cod', payment_status: 'pending', provider_id: '', nom: 'Coupon2', email: 'c2@test.com',
+        telephone: '0550123456', adresse: '1 Rue C', ville: 'Alger', coupon_code: 'ONCE', discount_dzd: 0 },
+      items: [{ productId: 3, name: 'Jean classique', priceDzd: 100, qty: 1, size: 'M' }],
+    });
+  } catch (e) {
+    couponError = e.code;
+  }
+  ok('commande avec coupon épuisé -> rejet atomique', couponError === 'COUPON_INVALID');
+
+  // Code inconnu.
+  ok('code inconnu -> refusé', coupon.discountFor('INCONNU', 1000) === null);
+
+  // Parcours HTTP : appliquer un coupon au panier.
+  res = await reviewer.get('/produit/t-shirt-coton');
+  csrf = extractCsrf(res.text);
+  await reviewer.post('/panier/ajouter').type('form').send({ _csrf: csrf, productId: 1, qty: 1, size: 'M' });
+  res = await reviewer.get('/panier');
+  csrf = extractCsrf(res.text);
+  res = await reviewer.post('/panier/coupon').type('form').send({ _csrf: csrf, coupon: 'PROMO10' });
+  ok('appliquer un coupon -> 302', res.status === 302);
+  res = await reviewer.get('/panier');
+  ok('panier affiche le coupon appliqué', /PROMO10/.test(res.text));
+
   console.log('\nTests : ' + passed + ' assertions OK.');
   process.exit(0);
 })().catch((err) => {

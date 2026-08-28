@@ -5,6 +5,7 @@ const product = require('../models/product');
 const category = require('../models/category');
 const orderModel = require('../models/order');
 const userModel = require('../models/user');
+const coupon = require('../models/coupon');
 const { requireAdmin } = require('../middleware/auth');
 const { assertCsrf } = require('../middleware/csrf');
 const { slugify } = require('../services/slugify');
@@ -294,6 +295,51 @@ router.post('/vendeurs/nouveau', (req, res) => {
   userModel.create({ name, email, role: 'seller', password_hash: bcrypt.hashSync(password, 10) });
   req.session.flash = { type: 'success', key: 'admin.seller_created' };
   return res.redirect('/admin/clients');
+});
+
+// Codes promo
+router.get('/coupons', (req, res) => {
+  res.render('admin/coupons', { title: 'admin', coupons: coupon.listAll() });
+});
+
+router.post('/coupons/nouveau', (req, res) => {
+  const code = validate.couponCode(req.body);
+  const type = req.body.type === 'fixed' ? 'fixed' : 'percent';
+  const value = parseInt(req.body.value, 10);
+  const min_amount = Math.max(0, parseInt(req.body.min_amount, 10) || 0);
+  const max_uses = Math.max(0, parseInt(req.body.max_uses, 10) || 0);
+  const expires_at = validate.textField(req.body.expires_at, 20);
+
+  if (!code || coupon.findByCode(code)) {
+    req.session.flash = { type: 'error', key: 'admin.coupon_invalid' };
+    return res.redirect('/admin/coupons');
+  }
+  const valueMax = type === 'percent' ? 100 : 100000000;
+  if (!Number.isInteger(value) || value < 0 || value > valueMax) {
+    req.session.flash = { type: 'error', key: 'admin.coupon_invalid' };
+    return res.redirect('/admin/coupons');
+  }
+  // Validation stricte de la date ISO si fournie.
+  let iso = null;
+  if (expires_at) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(expires_at) || Number.isNaN(Date.parse(expires_at + 'T00:00:00'))) {
+      req.session.flash = { type: 'error', key: 'admin.coupon_invalid' };
+      return res.redirect('/admin/coupons');
+    }
+    iso = expires_at + 'T23:59:59.000Z';
+  }
+  coupon.create({
+    code, type, value, min_amount, max_uses,
+    active: true,
+    expires_at: iso,
+  });
+  req.session.flash = { type: 'success', key: 'admin.coupon_created' };
+  res.redirect('/admin/coupons');
+});
+
+router.post('/coupons/:id/supprimer', (req, res) => {
+  coupon.remove(parseInt(req.params.id, 10));
+  res.redirect('/admin/coupons');
 });
 
 module.exports = router;

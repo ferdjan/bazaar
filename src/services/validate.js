@@ -23,6 +23,7 @@ const MAX = {
   size: 50,
   qty: 99,
   reviewComment: 2000,
+  couponCode: 50,
 };
 
 function isEmail(value) {
@@ -140,6 +141,12 @@ function review(body) {
   return { ok: true, rating: parseInt(rating, 10), comment };
 }
 
+// Validation d'un code coupon : texte alphanumérique (tirets acceptés).
+function couponCode(body) {
+  const code = textField(body && body.coupon, MAX.couponCode).toUpperCase();
+  return /^[A-Z0-9][A-Z0-9-]*$/.test(code) ? code : '';
+}
+
 module.exports = {
   isEmail,
   isPhone,
@@ -151,5 +158,6 @@ module.exports = {
   product,
   category,
   review,
+  couponCode,
   MAX,
 };

@@ -46,8 +46,23 @@
       </table>
       <aside class="cart-summary">
         <p><%= t('cart.subtotal') %> : <strong><%= formatDzd(subtotal) %></strong></p>
+        <% if (discount) { %><p class="discount"><%= t('coupon.discount') %> : <strong>−<%= formatDzd(discount) %></strong></p><% } %>
         <p><%= t('cart.shipping') %> : <strong><%= formatDzd(delivery) %></strong></p>
         <p class="total"><%= t('cart.total_due') %> : <strong><%= formatDzd(total) %></strong></p>
+        <% if (couponCode) { %>
+          <p class="coupon-applied">🎟 <%= couponCode %>
+            <form method="post" action="/panier/coupon/retirer" class="inline-form">
+              <input type="hidden" name="_csrf" value="<%= csrf %>">
+              <button type="submit" class="link-btn"><%= t('coupon.remove') %></button>
+            </form>
+          </p>
+        <% } else { %>
+          <form method="post" action="/panier/coupon" class="coupon-form">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
+            <input type="text" name="coupon" placeholder="<%= t('coupon.placeholder') %>" maxlength="50">
+            <button type="submit" class="btn btn-sm"><%= t('coupon.apply') %></button>
+          </form>
+        <% } %>
         <a href="/commande" class="btn btn-primary block"><%= t('cart.checkout') %></a>
         <% if (whatsappLink) { %><a href="<%= whatsappLink %>" target="_blank" rel="noopener" class="btn btn-whatsapp block"><%= t('cart.whatsapp') %></a><% } %>
         <a href="/catalogue" class="btn block"><%= t('cart.continue') %></a>
