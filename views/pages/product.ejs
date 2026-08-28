@@ -22,6 +22,10 @@
       <p class="stock <%= product.stock > 0 ? 'in' : 'out' %>">
         <%= product.stock > 0 ? t('product.stock') + ' (' + product.stock + ')' : t('product.out_of_stock') %>
       </p>
+      <a href="#reviews" class="review-summary-link">
+        <span class="review-summary-stars" aria-hidden="true">★★★★★</span>
+        <span><%= t('review.title') %> (<%= reviewStats.count %>)</span>
+      </a>
       <% if (product.stock > 0) { %>
         <% const sizes = (product.sizes || '').split(',').map(s => s.trim()).filter(Boolean); %>
         <form method="post" action="/panier/ajouter" class="add-form">
@@ -70,7 +74,7 @@
     </section>
   <% } %>
 
-  <section class="section reviews-section">
+  <section class="section reviews-section" id="reviews">
     <h2><%= t('review.title') %> <% if (reviewStats.count) { %><span class="rating-badge">★ <%= reviewStats.avg %> (<%= reviewStats.count %>)</span><% } %></h2>
 
     <% if (reviews.length) { %>
@@ -107,6 +111,8 @@
       </form>
     <% } else if (!user) { %>
       <p class="muted"><a href="/connexion"><%= t('review.login') %></a></p>
+    <% } else { %>
+      <p class="muted"><%= t('review.must_order') %></p>
     <% } %>
   </section>
 </main>

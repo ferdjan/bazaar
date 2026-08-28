@@ -661,6 +661,7 @@ function makeOrder(method, totalDzd) {
   // La fiche produit affiche l'avis.
   res = await request(app).get('/produit/t-shirt-coton');
   ok('fiche produit affiche la section avis', /reviews-section/.test(res.text));
+  ok('fiche produit affiche le lien vers les avis', /href="#reviews"/.test(res.text));
   ok('fiche produit affiche le commentaire', /Très bon produit/.test(res.text));
 
   // ---- Codes promo ----------------------------------------------------------

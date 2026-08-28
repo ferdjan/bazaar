@@ -755,6 +755,9 @@ label { display: block; margin: 16px 0 6px; font-weight: 600; font-size: 0.82rem
 .review-stars .star.on { color: var(--gold); }
 .review-date { color: var(--muted); font-size: 0.76rem; }
 .review-comment { margin: 8px 0 0; color: var(--text); }
+.review-summary-link { display: inline-flex; align-items: center; gap: 8px; margin: 4px 0 18px; color: var(--gold-light); font-size: 0.85rem; font-weight: 700; }
+.review-summary-link:hover { color: var(--text); }
+.review-summary-stars { color: var(--gold); letter-spacing: 0.08em; }
 .review-form { margin-top: 20px; padding: 18px; border: 1px solid var(--border-soft); border-radius: var(--radius); }
 .star-input { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; margin: 6px 0 14px; }
 .star-input input { display: none; }

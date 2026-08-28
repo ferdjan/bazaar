@@ -40,6 +40,7 @@ const strings = {
   'review.invalid': { fr: 'Note invalide (entre 1 et 5).', ar: 'تقييم غير صالح (من 1 إلى 5).' },
   'review.not_allowed': { fr: 'Vous devez avoir commandé ce produit pour laisser un avis.', ar: 'يجب أن تكون قد طلبت هذا المنتج لترك تقييم.' },
   'review.login': { fr: 'Connectez-vous pour laisser un avis.', ar: 'سجّل الدخول لترك تقييم.' },
+  'review.must_order': { fr: 'Le formulaire sera disponible après avoir commandé ce produit.', ar: 'سيظهر نموذج التقييم بعد طلب هذا المنتج.' },
   'product.stock_limited': { fr: 'Stock limité', ar: 'كمية محدودة' },
 
   // Panier
