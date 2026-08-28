@@ -266,10 +266,16 @@ function setStatus(ref, status, opts = {}) {
   const steps = stepsFor(order.payment_method);
   if (status === 'payee' && order.payment_method === 'cod' && opts.actorRole !== 'seller') return false;
   const idx = steps.indexOf(status);
+  const payeeIdx = steps.indexOf('payee');
   const parts = [`status = '${status}'`]; // valeur déjà validée par la whitelist
-  // Seul le statut métier « payée » confirme un encaissement. Une expédition
-  // ou une livraison COD ne doit pas gonfler le chiffre d'affaires.
-  if (status === 'payee') parts.push("payment_status = 'paid'");
+  // Le paiement suit l'étape « payée ». Atteindre/dépasser payée → encaissé ;
+  // régresser en-deçà de payée (ex. payee → livree) → redevient en attente,
+  // sinon le chiffre d'affaires et le statut affiché divergent.
+  if (idx >= payeeIdx) {
+    parts.push("payment_status = 'paid'");
+  } else if (order.status === 'payee') {
+    parts.push("payment_status = 'pending'");
+  }
   if (AT_FIELD[status]) {
     parts.push(`${AT_FIELD[status]} = COALESCE(${AT_FIELD[status]}, datetime('now'))`);
   }

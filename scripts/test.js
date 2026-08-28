@@ -592,6 +592,15 @@ function makeOrder(method, totalDzd) {
   orderModel.setStatus(oSt.ref, 'en_attente', {});
   ok('en_attente ne marque jamais payée', orderModel.findByRef(oSt.ref).payment_status === 'pending');
 
+  // Cohérence COD : une régression de payee -> livree doit repasser pending.
+  const oReg = makeOrder('cod', 700);
+  orderModel.setStatus(oReg.ref, 'livree', {});
+  orderModel.confirmCodPayment(oReg.ref, db.prepare("SELECT id FROM users WHERE role='seller'").get().id, 'seller');
+  ok('COD confirmée -> payee + paid', orderModel.findByRef(oReg.ref).status === 'payee' && orderModel.findByRef(oReg.ref).payment_status === 'paid');
+  orderModel.setStatus(oReg.ref, 'livree', { actorRole: 'admin' });
+  const oRegAfter = orderModel.findByRef(oReg.ref);
+  ok('régression payee -> livree remet pending', oRegAfter.status === 'livree' && oRegAfter.payment_status === 'pending');
+
   // ---- Avis clients ---------------------------------------------------------
   const review = require('../src/models/review');
 
