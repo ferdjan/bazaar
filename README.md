@@ -10,23 +10,29 @@ Stack principale : **Node.js 22, Express 4, EJS, SQLite (`better-sqlite3`)**.
 ## Fonctionnalités
 
 - Catalogue, catégories, recherche FR/AR et fiches produits.
+- Images multiples par produit (image principale + galerie).
 - Panier stocké en session et recalculé depuis la base avant commande.
 - Comptes clients, commandes invitées et suivi public par référence + e-mail.
 - Paiement COD, Stripe et PayPal.
-- Back-office : tableau de bord, produits, catégories, commandes, clients et vendeurs.
+- Codes promo (pourcentage ou montant fixe, minimum d'achat, usage limité, expiration).
+- Bouton « Commander via WhatsApp » sur la fiche produit et dans le panier.
+- Avis clients avec note 1-5, réservés aux clients ayant reçu le produit.
+- Back-office : tableau de bord, produits, catégories, coupons, commandes, clients et vendeurs.
 - Étiquettes d'expédition imprimables avec QR sécurisé.
 - Interface vendeur mobile/PWA pour scanner et confirmer un encaissement COD.
 - Suivi séparé de la livraison, du paiement, des retours et du stock.
 - Historique horodaté des actions avec identification de l'administrateur ou du vendeur.
+- SEO : sitemap.xml, robots.txt, meta description et canonical.
+- Notification e-mail de l'administrateur à chaque nouvelle commande.
 - Interface français/arabe avec mise en page RTL.
 
 ## Rôles et permissions
 
 | Rôle | Accès et responsabilités |
 |---|---|
-| `admin` | Gère le catalogue, les commandes, les clients, les vendeurs, les expéditions, les incidents, les retours et les étiquettes QR. |
+| `admin` | Gère le catalogue, les commandes, les clients, les vendeurs, les coupons, les expéditions, les incidents, les retours et les étiquettes QR. |
 | `seller` | Utilise uniquement l'espace `/scan`, consulte une commande via son QR et confirme l'argent COD réellement reçu. |
-| `customer` | Achète, consulte son compte et ses propres commandes. |
+| `customer` | Achète, consulte son compte, ses propres commandes et dépose des avis sur les produits reçus. |
 
 Règles importantes :
 
@@ -36,6 +42,10 @@ Règles importantes :
 - L'administrateur peut consulter un QR, mais son accès au scan est en lecture seule.
 - Seul un utilisateur dont le rôle est exactement `seller` peut confirmer un encaissement COD.
 - Stripe et PayPal sont confirmés par les fournisseurs de paiement, pas par le vendeur.
+- Le statut `payee` ne peut JAMAIS être forcé manuellement depuis l'administration : il provient
+  uniquement d'un webhook vérifié Stripe/PayPal ou d'un encaissement COD confirmé par un vendeur.
+- Un avis produit ne peut être déposé que par un client ayant une commande `livree` ou `payee`
+  contenant ce produit.
 
 ## Cycle d'une commande
 
@@ -225,6 +235,7 @@ Ce compte est réservé au développement. En production, l'application refuse d
 | `ADMIN_PASSWORD` | Mot de passe admin initial. Fort et unique en production. |
 | `DB_PATH` | Chemin de la base SQLite ; `./data.db` par défaut. |
 | `DELIVERY_FEE_DZD` | Frais de livraison forfaitaires, `600` par défaut. |
+| `WHATSAPP_NUMBER` | Numéro WhatsApp international sans `+` ; vide = bouton masqué. |
 | `DZD_TO_EUR_RATE` | Conversion d'un DZD vers l'EUR pour Stripe/PayPal. |
 | `STRIPE_SECRET_KEY` | Clé serveur Stripe. |
 | `STRIPE_PUBLIC_KEY` | Clé publique Stripe. |
@@ -255,7 +266,10 @@ Tables métier principales :
 | `users` | Comptes `admin`, `seller` et `customer`. |
 | `categories` | Catégories bilingues. |
 | `products` | Catalogue, prix DZD, stock, tailles et images. |
-| `orders` | Commandes, paiement, livraison, retour et coordonnées client. |
+| `product_images` | Images supplémentaires de la galerie produit. |
+| `reviews` | Avis clients (note 1-5, un avis par client et par produit). |
+| `coupons` | Codes promo (pourcentage ou fixe, min, usages, expiration). |
+| `orders` | Commandes, paiement, livraison, retour, coupon et coordonnées client. |
 | `order_items` | Lignes figées de chaque commande. |
 | `order_status_history` | Audit des changements avec acteur et date. |
 | `shipment_labels` | Hash du QR actif par commande. |
@@ -272,12 +286,17 @@ notamment les anciens rôles `admin/customer` vers `admin/seller/customer` sans 
 |---|---|---|
 | `/`, `/catalogue`, `/produit/:slug` | Public | Vitrine et catalogue. |
 | `/panier` | Public/session | Gestion du panier. |
+| `/panier/coupon` | Public/session | Application/retrait d'un code promo. |
+| `/produit/:slug/avis` | Client ayant reçu le produit | Dépôt d'un avis. |
 | `/commande` | Client ou invité | Checkout. |
 | `/suivi` | Public | Suivi par référence + e-mail. |
 | `/connexion`, `/inscription` | Public | Authentification client/admin/vendeur. |
 | `/compte` | Client | Commandes du compte. |
+| `/paiement/:method/:ref` | Client propriétaire ou session du checkout | Page de paiement. |
+| `/sitemap.xml`, `/robots.txt` | Public | SEO. |
 | `/admin` | Admin | Tableau de bord. |
 | `/admin/commandes/:ref` | Admin | Gestion d'une commande, retour et QR. |
+| `/admin/coupons` | Admin | Codes promo. |
 | `/admin/clients` | Admin | Clients et création de vendeurs. |
 | `/scan` | Vendeur ou admin en lecture | Accueil du scanner. |
 | `/scan/:token` | Vendeur ou admin en lecture | Commande liée au QR. |
@@ -296,11 +315,12 @@ src/
     schema.sql                schéma d'une base neuve
     seed.js                   admin, catégories et produits d'exemple
   middleware/                 auth, CSRF, variables de vues, rate limiting
-  models/                     accès aux utilisateurs, produits et commandes
-  routes/                     vitrine, auth, checkout, paiements, admin, scan
+  models/                     accès aux utilisateurs, produits, commandes, avis et coupons
+  routes/                     vitrine, auth, checkout, paiements, admin, scan, SEO
   services/
     payment/                  COD, Stripe et PayPal
     shipmentLabel.js          jetons et QR d'expédition
+    whatsapp.js               liens « Commander via WhatsApp »
     cart.js                   recalcul et validation serveur du panier
     orderStatus.js            étapes et timeline des commandes
 views/
@@ -310,9 +330,11 @@ views/
 public/
   css/style.css               styles globaux et responsive
   js/scanner.js               caméra QR côté navigateur
+  js/product.js               galerie et compteur de quantité
   manifest.webmanifest        installation PWA
   uploads/                    images ajoutées par l'admin
 scripts/test.js               tests HTTP et métier sur SQLite en mémoire
+scripts/backup-db.js          sauvegarde SQLite (`npm run backup`)
 ```
 
 La logique de contrôle est actuellement intégrée aux routes et aux modèles ; il n'existe pas de
@@ -323,10 +345,11 @@ dossier `controllers` utilisé.
 ```bash
 npm test
 npm audit --omit=dev
+npm run backup
 ```
 
 La suite utilise Supertest et une base SQLite `:memory:`. Au dernier passage documenté, elle compte
-**153 assertions** couvrant notamment :
+**182 assertions** couvrant notamment :
 
 - inscription, connexion et contrôle des rôles ;
 - CSRF, rate limiting et contrôle d'accès ;
@@ -334,11 +357,15 @@ La suite utilise Supertest et une base SQLite `:memory:`. Au dernier passage doc
 - paiement Stripe/PayPal vérifié ;
 - parcours COD expédition, livraison et encaissement vendeur ;
 - refus d'encaissement COD par l'administrateur ;
+- refus de forcer le statut `payee` manuellement depuis l'administration ;
+- accès aux pages de paiement réservé au propriétaire ou à la session du checkout ;
 - QR hashé, réimpression et révocation de l'ancien QR ;
 - retour revendable, restitution unique du stock et remboursement ;
 - suivi public sans fuite entre clients ;
 - réinitialisation de mot de passe et invalidation des sessions ;
-- validation réelle du contenu des images uploadées.
+- validation réelle du contenu des images uploadées ;
+- avis clients : dépôt après livraison, note invalide refusée, refus sans achat ;
+- coupons : pourcentage, fixe, plafond, montant minimum, expiration et usage unique.
 
 ## Sécurité
 
@@ -348,41 +375,52 @@ La suite utilise Supertest et une base SQLite `:memory:`. Au dernier passage doc
 - CSRF global avec comparaison en temps constant.
 - Helmet, CSP avec nonce, compression et limites de taille des corps.
 - Rate limiting global et renforcé sur les routes sensibles.
-- Requêtes SQLite préparées et transactions pour le stock et l'encaissement COD.
+- Requêtes SQLite préparées et transactions pour le stock, les coupons et l'encaissement COD.
 - Vérification Stripe/PayPal côté serveur, avec montant, devise, méthode et identifiant fournisseur.
+- Le statut `payee` ne peut jamais être forcé manuellement (webhook vérifié ou vendeur COD uniquement).
+- Pages de paiement protégées : propriétaire, admin ou session ayant créé la commande.
 - Jetons QR et reset stockés sous forme de hash SHA-256.
 - Images validées par magic bytes et nommées côté serveur.
+- Les journaux ne contiennent jamais de query string (tokens Stripe/PayPal, liens de reset exclus).
 - Messages d'erreur génériques côté client et détails journalisés côté serveur.
 
 ## Déploiement et limites de production
 
 Le fichier `render.yaml` configure un service Render Node.js. Avant ouverture publique :
 
-1. Définir `NODE_ENV=production`, `BASE_URL`, `SESSION_SECRET` et un `ADMIN_PASSWORD` fort.
+1. Définir `NODE_ENV=production`, `BASE_URL`, `SESSION_SECRET`, `ADMIN_PASSWORD` fort et
+   `WHATSAPP_NUMBER`.
 2. Vérifier que `BASE_URL` correspond exactement au domaine HTTPS final avant d'imprimer des QR.
 3. Configurer les clés et webhooks Stripe/PayPal uniquement lorsque les paiements sont prêts.
-4. Configurer SMTP si la réinitialisation par e-mail doit fonctionner.
+4. Configurer SMTP si la réinitialisation par e-mail et la notification admin doivent fonctionner.
 5. Tester un parcours COD complet avec un vrai téléphone et un compte vendeur.
 
 SQLite, les sessions et `public/uploads` sont écrits sur le système de fichiers local. Sur Render,
-ce stockage est éphémère sans disque persistant. Sans persistance, un redéploiement peut supprimer
-les comptes, commandes, QR, sessions et images ajoutées.
+ce stockage est éphémère sans disque persistant (plan Free). Sans persistance, un redéploiement ou
+une mise en veille peut supprimer les comptes, commandes, coupons, avis, QR, sessions et images.
 
-Pour une instance unique et un trafic modéré, utiliser un disque persistant et des sauvegardes
-testées. Pour plusieurs instances ou une montée en charge, migrer vers PostgreSQL, Redis pour les
-sessions et un stockage objet pour les images.
+La commande `npm run backup` crée une sauvegarde SQLite cohérente (`backups/data-*.db`), mais sur
+Render Free il faut ensuite la télécharger depuis le dashboard : le système de fichiers est récréé
+à chaque redéploiement.
+
+Pour un vrai passage en production : disque persistant (plan payant), ou migration vers PostgreSQL
+avec sessions Redis et stockage objet pour les images.
 
 ## Règles à préserver lors des prochaines modifications
 
 1. Une commande COD livrée n'est pas forcément payée.
 2. Seul un vendeur authentifié confirme un encaissement COD via le QR.
 3. L'administrateur gère la logistique et les retours, mais ne confirme pas l'argent COD.
-4. Le stock est réservé à la commande et restitué uniquement après annulation admissible ou retour
+4. Le statut `payee` ne peut jamais être forcé manuellement ; il provient d'un webhook vérifié ou
+   d'un encaissement vendeur.
+5. Les journaux ne doivent jamais contenir de query string ni de tokens.
+6. Le stock est réservé à la commande et restitué uniquement après annulation admissible ou retour
    physiquement reçu et revendable.
-5. Un article endommagé ne retourne jamais dans le stock vendable.
-6. Un retour payé conserve l'encaissement historique et ajoute un remboursement distinct.
-7. Le chiffre d'affaires est net des remboursements et exclut les commandes impayées ou annulées.
-8. Toute opération sensible doit rester transactionnelle, idempotente, autorisée et historisée.
-9. Un nouveau QR invalide l'ancien ; aucun jeton brut ne doit être stocké en base.
-10. Toute évolution des règles ci-dessus doit mettre à jour les tests et ce README dans le même
+7. Un article endommagé ne retourne jamais dans le stock vendable.
+8. Un retour payé conserve l'encaissement historique et ajoute un remboursement distinct.
+9. Le chiffre d'affaires est net des remboursements et exclut les commandes impayées ou annulées.
+10. Un avis produit exige une commande livrée ou payée du même client.
+11. Toute opération sensible doit rester transactionnelle, idempotente, autorisée et historisée.
+12. Un nouveau QR invalide l'ancien ; aucun jeton brut ne doit être stocké en base.
+13. Toute évolution des règles ci-dessus doit mettre à jour les tests et ce README dans le même
     changement.
