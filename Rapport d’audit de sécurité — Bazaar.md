@@ -1,159 +1,205 @@
 # Rapport d’audit de sécurité — Bazaar
 
-**Cible :** [https://bazaar-rezw.onrender.com/](https://bazaar-rezw.onrender.com/)
-**Dépôt analysé :** [github.com/ferdjan/bazaar](https://github.com/ferdjan/bazaar)
-**Date :** 21 août 2026
-**Périmètre :** analyse défensive du code public et contrôles externes non destructifs. Aucun compte n’a été utilisé, aucune commande ni paiement n’a été créé, et aucune donnée n’a été modifiée.
-
-## Conclusion en termes simples
-
-Le site possède déjà plusieurs protections sérieuses : HTTPS, redirection HTTP vers HTTPS, cookie de session `Secure`/`HttpOnly`/`SameSite=Lax`, CSP avec nonce, protection CSRF, contrôle d’accès administrateur, requêtes SQL préparées, validation serveur du panier et vérifications serveur des paiements. Les contrôles publics effectués n’ont pas révélé de fuite directe de `.env`, de code source, de base SQLite ou de répertoire Git.
-
-Cependant, **je ne recommande pas de rendre la boutique pleinement opérationnelle avant de corriger ou vérifier quatre points**. Le plus urgent est la version de Multer utilisée pour les uploads. Le deuxième point, potentiellement bloquant, concerne la persistance des données sur Render. Les deux autres concernent la configuration du compte administrateur et le stockage des jetons de réinitialisation de mot de passe.
-
-> **Verdict :** bonne base de développement, mais mise en production à suspendre jusqu’à la vérification du stockage Render et des secrets de production, puis mise à jour de Multer.
-
-## Priorités d’action
-
-| Priorité | Constat | Gravité | Décision recommandée |
-| --- | --- | --- | --- |
-| 1 | Multer `1.4.5-lts.2` est dans une branche affectée par un déni de service multipart annoncé par Express en 2026. | **Élevée** | Mettre à niveau vers `multer >= 2.2.0`, puis retester l’upload. |
-| 2 | SQLite, les sessions et les uploads sont écrits sur le système de fichiers local. Render indique que celui-ci est éphémère sans disque persistant. | **Bloquante si aucun stockage persistant n’est configuré** | Vérifier Render immédiatement ; ajouter un disque persistant ou migrer vers PostgreSQL + stockage objet. |
-| 3 | Le code contient encore des valeurs de secours faibles pour `SESSION_SECRET`, `ADMIN_PASSWORD` et `admin@example.com`. | **Élevée si les variables Render sont absentes ou si `NODE_ENV` n’est pas `production`** | Configurer les secrets dans Render et faire échouer le démarrage si un secret de production manque. |
-| 4 | Les jetons de réinitialisation sont stockés en clair dans SQLite. | **Moyenne** | Stocker uniquement un hash SHA-256 du jeton et invalider les sessions après changement de mot de passe. |
-| 5 | Le cookie de session est persistant pendant environ 30 jours. | **Moyenne** | Réduire la durée à quelques heures ou une journée, sauf fonctionnalité « rester connecté » conçue séparément. |
-| 6 | Une référence de commande connue permet d’afficher publiquement son total et son statut. | **Faible à moyenne** | Protéger davantage les pages de paiement/confirmation ou utiliser un jeton de confirmation distinct. |
-
-## 1. Multer : mise à jour urgente
-
-Le dépôt déclare `multer: ^1.4.5-lts.1` et l’installation locale a résolu la dépendance vers **Multer 1.4.5-lts.2**. La documentation officielle Express signale `CVE-2026-5079`, une vulnérabilité de déni de service par noms de champs multipart très profondément imbriqués, pour les versions Multer `>= 1.0.0, < 2.2.0`. La version corrigée annoncée est `>= 2.2.0` [1].
-
-Le risque concerne le parseur multipart lui-même. Le fait que Bazaar utilise `memoryStorage` et limite la taille des fichiers est positif, mais cela ne remplace pas la mise à jour du parseur. Une personne pourrait tenter de consommer excessivement la mémoire ou le CPU du service via le formulaire d’upload administrateur.
-
-Dans le dépôt, le fichier [src/routes/admin.js](https://github.com/ferdjan/bazaar/blob/main/src/routes/admin.js#L16-L36) possède déjà `fileSize: 5 * 1024 * 1024` et `files: 1`, ce qui est une bonne base. Il faut néanmoins mettre à jour la dépendance et ajouter, si la nouvelle version le permet dans votre configuration, des limites explicites pour le nombre de champs, le nombre total de parties, la taille des noms de champs et la taille des en-têtes multipart.
-
-La correction minimale à effectuer localement est :
-
-```bash
-npm install multer@^2.2.0
-npm audit
-npm test
-```
-
-Après cette mise à jour, testez manuellement dans l’espace admin une vraie image JPEG, PNG et WebP, puis un fichier non-image renommé en `.jpg`. Le dernier doit être refusé. Ne testez pas avec une charge multipart volumineuse sur le site public.
-
-## 2. Risque Render : perte de la base, des comptes et des images
-
-Le code utilise SQLite dans `src/db/connection.js`, un store de session SQLite dans `src/services/sessionStore.js` et écrit les images uploadées dans `public/uploads`. Render indique officiellement que le système de fichiers d’un service est **éphémère par défaut** et que les changements locaux sont perdus lors d’un redémarrage ou d’un redéploiement sans disque persistant [2] [3].
-
-Ce point n’est pas une faille HTTP, mais il est critique pour une boutique. Sans stockage persistant, un redéploiement peut faire disparaître les utilisateurs, commandes, sessions, produits ajoutés et images uploadées. Une sauvegarde ne doit pas être considérée comme faite simplement parce que le service fonctionne aujourd’hui.
-
-Vous devez vérifier dans le tableau de bord Render que le service dispose bien d’un disque persistant monté au chemin qui contient `data.db` et `public/uploads`. Le dépôt prévoit `DB_PATH` comme variable optionnelle dans [.env.example](https://github.com/ferdjan/bazaar/blob/main/.env.example#L39-L40). Si le chemin n’est pas placé sur le disque persistant, la configuration ne suffit pas.
-
-Pour une vraie mise en production, la solution la plus robuste est de migrer la base vers PostgreSQL et les images vers un stockage objet. Une solution temporaire peut consister à utiliser un disque persistant Render, à effectuer des sauvegardes régulières et à tester une restauration sur une copie. Si plusieurs instances sont ajoutées plus tard, SQLite et le store de session local ne suffiront plus.
-
-## 3. Compte administrateur et secrets de production
-
-Le fichier [src/config.js](https://github.com/ferdjan/bazaar/blob/main/src/config.js#L4-L20) prévoit les valeurs de secours suivantes : `SESSION_SECRET = dev-secret-change-me`, `ADMIN_EMAIL = admin@example.com` et `ADMIN_PASSWORD = admin123`. Le script de seed refuse bien de créer le mot de passe `admin123` lorsque `NODE_ENV=production` [4]. Cette protection est utile, mais elle dépend entièrement de la présence correcte de `NODE_ENV=production` au moment du seed.
-
-Le risque est donc une erreur de configuration : si Render ne définit pas `NODE_ENV=production`, ou si le compte admin a déjà été créé avec le mot de passe de développement, l’identifiant faible peut rester utilisable. Je n’ai pas tenté de me connecter avec ce compte, car cela aurait été une action d’authentification inutile sur votre instance.
-
-Dans Render, vérifiez au minimum les variables suivantes :
-
-| Variable | Valeur attendue |
-| --- | --- |
-| `NODE_ENV` | `production` |
-| `BASE_URL` | `https://bazaar-rezw.onrender.com` ou votre domaine final HTTPS |
-| `SESSION_SECRET` | une valeur aléatoire longue, différente du dépôt et de l’exemple |
-| `ADMIN_EMAIL` | votre adresse réelle d’administration, non publique si possible |
-| `ADMIN_PASSWORD` | un mot de passe unique, long et non réutilisé |
-| `STRIPE_SECRET_KEY` | clé live uniquement lorsque Stripe est prêt ; jamais dans GitHub |
-| `STRIPE_WEBHOOK_SECRET` | secret webhook correspondant à l’URL de production |
-| `PAYPAL_MODE` | `live` uniquement lorsque PayPal est réellement configuré |
-| `PAYPAL_CLIENT_SECRET` | secret PayPal live, uniquement dans les variables Render |
-| `TRUST_PROXY` | à définir seulement selon le proxy Render réellement utilisé ; suivre la note du code |
-
-Je recommande de rendre la configuration « fail closed » : en production, l’application doit refuser de démarrer si `SESSION_SECRET`, `BASE_URL` ou `ADMIN_PASSWORD` sont absents, trop courts ou égaux à une valeur de développement. Il vaut mieux un déploiement qui échoue avec un message clair qu’un site démarré avec un compte administrateur prévisible.
-
-## 4. Jetons de réinitialisation de mot de passe
-
-Le flux de mot de passe oublié possède plusieurs bonnes protections. Il génère un jeton aléatoire de 32 octets, lui donne une expiration d’une heure par défaut, renvoie une réponse générique et invalide le jeton après utilisation. Ces éléments correspondent à plusieurs recommandations OWASP [5].
-
-Le point à corriger est le stockage : [src/routes/auth.js](https://github.com/ferdjan/bazaar/blob/main/src/routes/auth.js#L74-L130) génère le jeton puis le modèle utilisateur l’enregistre tel quel dans SQLite. Si quelqu’un obtenait une copie de la base, il pourrait utiliser les jetons encore valides pour réinitialiser des comptes.
-
-La correction est simple : envoyer le jeton original uniquement dans l’e-mail, mais enregistrer en base `sha256(token)`. Lorsqu’un utilisateur ouvre le lien, calculer le même hash et rechercher ce hash. Après la réinitialisation, vider le hash et la date d’expiration. Comme le jeton est déjà aléatoire et long, SHA-256 sert ici d’empreinte de recherche ; il ne faut pas utiliser le mot de passe utilisateur comme clé de stockage.
-
-Après un changement de mot de passe, il est également préférable d’invalider les sessions existantes du compte. Le store de session actuel utilise SQLite ; il faudra donc prévoir une stratégie simple, par exemple un champ `session_version` ou `password_changed_at` vérifié à chaque requête authentifiée.
-
-## 5. Durée de vie du cookie de session
-
-L’instance renvoie un cookie `connect.sid` avec `Secure; HttpOnly; SameSite=Lax`, et le code configure `httpOnly: true`, `sameSite: 'lax'` et `secure` en production [6]. C’est un résultat positif : OWASP recommande ces attributs et rappelle que `SameSite` complète la protection CSRF sans la remplacer [7].
-
-Le cookie observé possède toutefois une expiration d’environ 30 jours, cohérente avec `maxAge: 1000 * 60 * 60 * 24 * 30` dans [src/app.js](https://github.com/ferdjan/bazaar/blob/main/src/app.js#L67-L78). Si le cookie est volé, cette durée élargit la fenêtre d’utilisation. Pour une boutique qui contient des commandes et des données personnelles, je recommande une session de 8 à 24 heures, ou un cookie de session sans `maxAge`. Si vous voulez proposer « rester connecté », cette fonctionnalité doit utiliser un mécanisme séparé, révocable et limité, pas la session administrative principale.
-
-## 6. Références de commande et exposition limitée
-
-Les routes de paiement cherchent une commande avec la référence fournie dans l’URL et les pages publiques de confirmation affichent la référence, les montants, le mode de paiement et le statut. Le modèle génère une référence aléatoire de 8 octets, soit 16 caractères hexadécimaux [8]. Elle est difficile à deviner par force brute, mais une référence peut être copiée depuis une URL, un historique ou un message.
-
-Le risque observé est surtout une exposition de données commerciales : connaître une référence permet de consulter le total et le statut de la commande. Le nom, l’adresse et le téléphone ne sont pas affichés par le modèle de confirmation publique examiné, et la page détaillée `/commande/:ref` vérifie bien que l’utilisateur est propriétaire ou admin. Pour réduire encore le risque, utilisez un jeton de confirmation distinct, à usage limité, ou exigez la session du propriétaire pour les pages de paiement et de confirmation des clients inscrits.
-
-## Contrôles positifs constatés
-
-| Contrôle | Résultat |
-| --- | --- |
-| Redirection HTTP vers HTTPS | Observée : HTTP renvoie `301` vers HTTPS. |
-| HSTS | Présent avec `max-age=15552000; includeSubDomains`. |
-| CSP | Présente avec nonce, `object-src 'none'`, sans `unsafe-eval` observé. |
-| Cookie de session | `Secure`, `HttpOnly`, `SameSite=Lax` observés. |
-| En-têtes | `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: no-referrer`, COOP/CORP observés. |
-| Fichiers sensibles publics | `/.env`, `/package.json`, `/src/app.js`, `/data.db`, `/.git/HEAD` et `/uploads/` ont répondu 404. |
-| Contrôle admin | `/admin` sans session redirige vers `/connexion`. |
-| CSRF | Le code protège globalement les requêtes non sûres ; plusieurs POST sans jeton ont répondu 403 lors du smoke test. |
-| XSS de recherche | L’entrée `<script>alert(1)</script>` a été reflétée sous forme échappée `&lt;script&gt;...`, sans balise script brute. |
-| Paiements | Stripe et PayPal vérifient côté serveur la référence, le montant et la devise avant de marquer une commande payée, selon le code examiné. |
-| Secrets dans Git | Aucun fichier `.env`, certificat, clé privée ou secret live n’a été trouvé dans l’état actuel ni dans les 8 commits clonés ; les correspondances historiques étaient des valeurs d’exemple. |
-
-## État après les modifications du 22 août 2026
-
-Les améliorations suivantes ont été intégrées et vérifiées localement :
-
-| Sujet | État |
-| --- | --- |
-| Multer | Mis à niveau vers `2.2.0` avec limites multipart renforcées. |
-| Configuration production | Refus de démarrage si le secret de session, l’URL HTTPS ou le mot de passe admin sont faibles ou absents. |
-| Session | Durée maximale réduite de 30 jours à 24 heures. |
-| Dashboard | Filtres serveur par statut et compteurs par statut ajoutés. |
-| Actions admin | Actions expédier, livrer, payer COD et annuler ajoutées avec contrôle des transitions. |
-| CSRF | Les actions admin sont protégées comme les autres formulaires sensibles. |
-| Historique | Les changements de statut enregistrent l’administrateur, l’ancien statut, le nouveau statut, l’action et le suivi. |
-| Paiement COD | Une commande COD expédiée ou livrée reste impayée jusqu’à l’action explicite « payer ». |
-| Paiements en ligne | Une action locale ne peut pas marquer Stripe ou PayPal comme payé ; la confirmation fournisseur reste obligatoire. |
-
-La suite locale contient désormais **133 assertions OK**. Elle couvre notamment les filtres du dashboard, les actions admin, le refus sans CSRF, les transitions COD, la conservation du suivi, l’historique et le calcul du chiffre d’affaires. `npm audit --omit=dev` signale **0 vulnérabilité**.
-
-## Tests et limites de l’audit
-
-Les vérifications externes étaient limitées à des requêtes GET publiques et à des POST sans jeton CSRF, donc sans création de compte, panier, commande, paiement ou upload. L’audit n’a pas testé le tableau de bord Render, les variables d’environnement réelles, le compte admin, les webhooks avec des signatures réelles ni les comptes Stripe/PayPal.
-
-La suite `npm test` passe dans l’environnement actuel. Les vérifications restent des tests automatisés locaux : elles ne remplacent pas un test de déploiement, un test de restauration de sauvegarde, ni une validation avec de vraies signatures Stripe/PayPal. Les webhooks et les comptes de paiement réels n’ont pas été exercés dans cette passe.
-
-## Plan de mise en production recommandé
-
-Commencez par **ne pas activer les vrais paiements** et ne publiez pas le compte admin tant que la configuration n’est pas vérifiée. Dans Render, confirmez `NODE_ENV=production`, remplacez tous les secrets d’exemple, vérifiez le chemin persistant de SQLite et des uploads, et effectuez une sauvegarde/restauration de test.
-
-Multer est maintenant en `2.2.0`, le stockage des jetons est hashé et la durée du cookie a été réduite. Avant l’ouverture publique, testez manuellement un parcours complet en environnement de test : création d’un client, connexion, panier, commande en paiement à la livraison, actions expédier/livrer/payer, accès à la commande d’un autre compte, réinitialisation de mot de passe, accès admin et upload d’un fichier invalide.
-
-Les prochaines priorités sont : vérifier le disque persistant Render et la restauration, ajouter une pagination des commandes, puis tester les webhooks avec les comptes Stripe et PayPal de test. L’historique actuel utilise SQLite ; lors d’une migration PostgreSQL, cette table devra être migrée avec les commandes.
-
-> **Règle simple avant ouverture au public :** un redéploiement de test ne doit faire disparaître ni un compte, ni une commande, ni une image ; un compte admin ne doit pas fonctionner avec `admin123` ; et une image non valide ne doit jamais être acceptée.
-
-## Références
-
-[1]: https://expressjs.com/en/blog/2026-06-30-security-releases/ "Express.js — June 2026 Security Releases"
-[2]: https://render.com/docs/disks "Render — Persistent Disks"
-[3]: https://render.com/docs/deploys "Render — Deploying on Render"
-[4]: https://github.com/ferdjan/bazaar/blob/main/src/db/seed.js#L18-L31 "Bazaar — seed du compte admin"
-[5]: https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html "OWASP — Forgot Password Cheat Sheet"
-[6]: https://github.com/ferdjan/bazaar/blob/main/src/app.js#L67-L78 "Bazaar — configuration de session"
-[7]: https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html "OWASP — Session Management Cheat Sheet"
-[8]: https://github.com/ferdjan/bazaar/blob/main/src/models/order.js#L14-L18 "Bazaar — génération des références de commande"
+J’ai audité le dépôt ferdjan/bazaar dans son état actuel. L’application possède une base technique sérieuse, mais je déconseille une mise en production commerciale avant correction des règles de transition des commandes, des remboursements et du stockage persistant.
+Constats Prioritaires
+1. Critique: une commande Stripe/PayPal impayée peut être marquée payée indirectement
+Références: src/models/order.js:263-291, src/routes/admin.js:247-261
+setStatus() interdit bien de choisir directement payee, mais considère automatiquement comme payée toute étape située après payee:
+if (idx >= payeeIdx) {
+  parts.push("payment_status = 'paid'");
+}
+Pour Stripe et PayPal, le cycle est:
+en_attente -> payee -> expediee -> livree
+Un administrateur peut donc envoyer directement expediee ou livree. La commande devient alors payment_status = paid sans confirmation Stripe ou PayPal.
+Correction recommandée: ne jamais déduire le paiement d’un statut logistique. Pour un paiement en ligne, en_attente -> payee doit uniquement être effectué par une confirmation fournisseur vérifiée. L’expédition ne doit être possible que si payment_status = paid.
+2. Critique: une commande payée peut être annulée sans remboursement
+Références: src/models/order.js:253-260, src/models/order.js:326-334
+setStatus(ref, 'annulee') ne vérifie ni payment_status, ni la méthode de paiement, ni l’existence d’un remboursement.
+Le chiffre d’affaires exclut ensuite toutes les commandes annulées:
+WHERE payment_status = 'paid' AND status != 'annulee'
+Une vente réellement encaissée peut donc disparaître du chiffre d’affaires sans remboursement client.
+Correction recommandée: interdire l’annulation d’une commande payée. Utiliser une opération distincte de remboursement, enregistrant le fournisseur, le montant, l’identifiant de remboursement, son statut et sa date.
+3. Élevé: les deux chemins d’annulation ne produisent pas les mêmes effets
+Références: src/models/order.js:298-319, src/routes/admin.js:232-261
+L’action métier actionFor(..., 'cancel') peut restituer le stock. La modification manuelle /statut appelle directement setStatus() et ne le restitue pas.
+Résultat possible:
+Commande annulée
+stock_released = 0
+stock produit toujours diminué
+Correction recommandée: supprimer l’annulation générique depuis setStatus() et centraliser toute annulation dans une transaction cancelOrder().
+4. Élevé: la machine à états autorise les sauts et régressions
+Référence: src/models/order.js:244-295
+setStatus() vérifie uniquement que la valeur appartient à une liste. Il ne vérifie pas si la transition depuis l’état actuel est autorisée.
+Il est notamment possible de:
+- passer directement de en_attente à livree;
+- remettre une commande livrée à en_attente;
+- réactiver une commande annulée;
+- faire régresser une commande réellement payée vers pending.
+La suite teste et considère même ce dernier comportement comme correct dans scripts/test.js:617:
+régression payee -> livree remet pending
+C’est dangereux: une régression logistique ne doit jamais annuler un paiement fournisseur réel.
+Correction recommandée: créer une table explicite des transitions autorisées et interdire les régressions par défaut.
+5. Élevé: une capture PayPal est déclenchée par une requête GET
+Références: src/routes/payments.js:85-105, src/routes/payments.js:62-75
+Le retour PayPal appelle:
+await paypal.captureAndVerify(order);
+Une requête GET de navigation ne devrait pas produire d’effet financier. Elle peut être déclenchée par un navigateur, un robot, un préchargement ou une personne disposant de l’URL.
+Les routes de succès et d’annulation n’utilisent pas non plus canAccessPayment().
+Correction recommandée: utiliser les webhooks signés comme source de vérité. Les routes GET de retour doivent uniquement afficher l’état actuel. Si une synchronisation de secours est nécessaire, elle doit être authentifiée, idempotente et séparée de la page GET.
+6. Élevé: le remboursement est seulement enregistré localement
+Référence: src/models/order.js:147-156
+Lors d’un retour payé, le système exécute:
+UPDATE orders SET refund_dzd = total_dzd
+Cela n’effectue aucun remboursement Stripe ou PayPal. L’interface peut donc afficher « remboursée » alors que le fournisseur n’a rien remboursé.
+Correction recommandée: ajouter un véritable workflow de remboursement fournisseur avec états pending, succeeded, failed, identifiant externe et idempotence.
+7. Élevé: le stockage Render Free est éphémère
+Références: render.yaml:7, README.md:398-407
+Le projet stocke localement:
+- la base SQLite;
+- les sessions;
+- les images uploadées;
+- les commandes et paiements;
+- les coupons, avis et QR.
+Render Free peut supprimer ces données lors d’un redéploiement ou d’une recréation d’instance.
+Correction recommandée avant production:
+- PostgreSQL pour les données;
+- stockage objet S3-compatible pour les images;
+- Redis pour les sessions et le rate limiting;
+- sauvegardes automatiques hors instance;
+- test régulier de restauration.
+8. Élevé: la consommation d’un jeton de réinitialisation n’est pas atomique
+Références: src/routes/auth.js:119-135, src/models/user.js:69-79
+La route lit le jeton, puis effectue séparément la mise à jour. Deux requêtes concurrentes pourraient valider le même jeton avant son invalidation.
+Correction recommandée: effectuer un UPDATE conditionnel sur le hash du jeton et son expiration, puis vérifier que changes === 1.
+Problèmes Importants
+ 9. PayPal utilise une vérification trop partielle
+Référence: src/services/payment/paypal.js:77-95
+Seule la première purchase_unit est vérifiée. Le code ne confirme pas strictement:
+- qu’il existe exactement une unité;
+- que result.id === order.provider_id;
+- que custom_id et invoice_id correspondent;
+- que le montant réellement capturé correspond au montant attendu.
+10. Absence de déduplication persistante des webhooks
+Les signatures sont vérifiées et markPaid() est idempotent, ce qui est positif. Mais aucun event_id fournisseur n’est conservé.
+Recommandation: ajouter une table payment_events avec une contrainte unique sur (provider, event_id).
+11. Le taux EUR peut changer après création de la commande
+Les services de paiement recalculent le montant EUR à partir de total_dzd et du taux courant. Pourtant, total_eur existe déjà dans la commande.
+Recommandation: enregistrer au checkout:
+payment_currency
+payment_amount_minor
+exchange_rate
+Puis ne plus recalculer le montant pendant le paiement ou le webhook.
+12. Les coupons ne sont pas complètement revalidés dans la transaction
+Référence: src/models/order.js:35-43
+La réservation transactionnelle vérifie l’activité et le nombre d’utilisations, mais pas l’expiration ou le montant minimum.
+Recommandation: le modèle de commande doit recalculer lui-même la réduction. Il ne doit pas faire confiance à un discount_dzd transmis par l’appelant.
+13. Validation d’image insuffisante
+Référence: src/services/image.js:8-45
+La vérification des magic bytes est préférable à la confiance dans l’extension, mais elle ne garantit pas que le fichier est une image valide et décodable.
+Recommandation: décoder et réencoder avec sharp, limiter les dimensions et supprimer les métadonnées.
+14. Les uploads ne sont pas transactionnels
+Si l’écriture SQL échoue après l’enregistrement d’un fichier, celui-ci reste orphelin. Lors d’une modification, l’ancienne image peut être supprimée avant confirmation de l’UPDATE.
+Recommandation: utiliser des fichiers temporaires et ne supprimer l’ancienne image qu’après succès de la transaction SQL.
+15. Les contraintes SQL restent trop faibles
+Ajouter notamment des CHECK pour:
+total_dzd >= 0
+delivery_dzd >= 0
+refund_dzd >= 0
+refund_dzd <= total_dzd
+qty > 0
+price_dzd >= 0
+delivery_status devrait aussi être contraint à ses valeurs autorisées.
+16. Incompatibilité entre CSP et handlers JavaScript inline
+Références: src/app.js:34-50, views/admin/order.ejs:50, views/admin/label.ejs:22
+La CSP interdit unsafe-inline, mais les vues utilisent:
+onsubmit="return confirm(...)"
+onclick="window.print()"
+Ces actions risquent d’être bloquées dans un navigateur.
+Correction recommandée: remplacer les handlers inline par un fichier JavaScript utilisant addEventListener().
+17. SDK PayPal obsolète
+npm ci signale que @paypal/checkout-server-sdk@1.0.3 n’est plus maintenu.
+Recommandation: planifier une migration vers @paypal/paypal-server-sdk, après sécurisation des workflows actuels.
+18. Politique de mots de passe trop faible
+Six caractères sont acceptés, y compris pour les vendeurs dans src/routes/admin.js:287-295.
+Recommandation:
+- minimum 12 caractères pour admin et vendeur;
+- minimum 10 à 12 pour les clients;
+- MFA pour les administrateurs;
+- possibilité de changer le mot de passe depuis le compte.
+Architecture Recommandée
+La logique critique est actuellement répartie entre routes, modèles et services de paiement. C’est la cause principale des divergences observées.
+Je recommande de créer progressivement une couche métier:
+src/services/orders.js
+src/services/payments.js
+src/services/refunds.js
+src/services/inventory.js
+Les opérations publiques devraient être explicites:
+createOrder()
+shipOrder()
+deliverOrder()
+cancelUnpaidOrder()
+confirmOnlinePayment()
+confirmCodPayment()
+receiveReturn()
+refundOrder()
+Chaque opération doit être:
+- transactionnelle;
+- autorisée selon le rôle;
+- idempotente;
+- historisée;
+- testée selon la méthode de paiement;
+- incapable de modifier implicitement un autre domaine métier.
+Évitez surtout une méthode générique comme setStatus() pour les opérations financières.
+Tests À Ajouter En Priorité
+ 1. Stripe pending + tentative expediee doit être refusée.
+ 2. PayPal pending + tentative livree doit être refusée.
+ 3. Commande payée + annulation sans remboursement doit être refusée.
+ 4. Annulation d’une commande en attente doit restituer le stock exactement une fois.
+ 5. Une commande payée ne doit jamais redevenir pending par changement logistique.
+ 6. Deux utilisations concurrentes du même jeton de reset: une seule doit réussir.
+ 7. Deux webhooks avec le même event_id: un seul traitement.
+ 8. Échec SQL après upload: aucun fichier orphelin.
+ 9. Parcours navigateur admin avec CSP active.
+10. Remboursement Stripe/PayPal échoué: la commande ne doit pas être présentée comme remboursée.
+Points Positifs
+Le projet ne doit pas être réécrit. Plusieurs choix sont déjà solides:
+- architecture simple et compréhensible;
+- requêtes SQL préparées;
+- création de commande et réservation de stock transactionnelles;
+- protection contre le stock négatif;
+- CSRF global;
+- Helmet et CSP;
+- sessions persistantes avec cookies sécurisés;
+- régénération de session après authentification;
+- rate limiting sur les routes sensibles;
+- mots de passe bcrypt;
+- jetons de reset et QR stockés sous forme de hash;
+- QR suffisamment aléatoires et révocables;
+- vérification serveur du montant, de la devise et de la référence des paiements;
+- séparation entre administrateur et vendeur;
+- suivi public protégé par référence et adresse e-mail;
+- bonne documentation métier;
+- suite de tests déjà riche.
+Résultats Des Vérifications
+- npm test: 182 assertions réussies
+- npm audit --omit=dev: 0 vulnérabilité connue
+- Installation: réussie
+- Avertissement: projet déclaré pour Node 22, environnement d’audit sous Node 24
+- Avertissement: SDK PayPal actuel déprécié
+- Arbre Git: aucune modification produite pendant l’audit
+Ordre De Travail Conseillé
+ 1. Corriger setStatus() et formaliser les transitions.
+ 2. Unifier l’annulation et la restitution du stock.
+ 3. Créer un vrai workflow de remboursement.
+ 4. Retirer les effets financiers des routes GET.
+ 5. Ajouter la déduplication des webhooks.
+ 6. Rendre le reset atomique.
+ 7. Passer à un stockage de production persistant.
+ 8. Renforcer PayPal et figer le montant EUR.
+ 9. Durcir les uploads et les contraintes SQL.
+10. Ajouter des tests navigateur et de concurrence.
+La qualité générale est bonne pour une application en développement avancé. Le principal risque n’est pas une injection SQL ou une vulnérabilité npm évidente, mais une machine à états métier trop permissive, susceptible de rendre le paiement, le stock et le chiffre d’affaires incohérents.
+▣  Build · GPT-5.6 Sol · 3m 19s
+crée un fichier recomendation.md
++ Thought: Creating recomendation.md file · 2ms
+Je vais créer bazaar/recomendation.md avec le rapport structuré par priorité, les références de code, les corrections proposées et une feuille de route exploitable.
