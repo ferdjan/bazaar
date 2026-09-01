@@ -55,6 +55,15 @@ services:
         value: sandbox
       - key: PAYPAL_WEBHOOK_ID
         sync: false
+      # Connexion Google (OAuth 2.0). Laisser vides = bouton masqué.
+      # URI de redirection autorisée dans Google Cloud Console :
+      #   https://bazaar-rezw.onrender.com/auth/google/callback
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
       # SMTP optionnel (e-mails de réinitialisation)
       - key: SMTP_HOST
         sync: false

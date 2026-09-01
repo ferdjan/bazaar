@@ -11,6 +11,7 @@ public/uploads/
 *.key
 *.p12
 *.pfx
+client_secret_*.json
 
 # Documents financiers / tableurs / rapports (ne jamais versionner)
 *.xlsx
