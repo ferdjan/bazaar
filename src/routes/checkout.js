@@ -132,7 +132,6 @@ router.post('/commande', paymentLimiter, (req, res, next) => {
         email: v.form.email,
         telephone: v.form.telephone,
         adresse: v.form.adresse,
-        ville: v.form.ville,
         wilaya_code: loc.wilaya_code,
         commune_id: loc.commune_id,
         coupon_code: sc.code,
@@ -172,13 +171,15 @@ router.post('/commande', paymentLimiter, (req, res, next) => {
   // Notification admin (fire-and-forget) : n'échoue jamais la commande.
   if (mail.isConfigured()) {
     const itemsText = order.items.map((it) => `- ${it.name} x${it.qty} = ${it.price_dzd * it.qty} DA`).join('\n');
+    const lieu = [order.commune_name_fr, order.wilaya_name_fr].filter(Boolean).join(', ');
     mail.sendMail({
       to: config.adminEmail,
       subject: `Nouvelle commande ${order.ref} (${order.payment_method})`,
       text: [
         `Nouvelle commande : ${order.ref}`,
         `Client : ${order.nom} — ${order.telephone}`,
-        `Ville : ${order.ville}`,
+        `E-mail : ${order.email || '—'}`,
+        `Adresse : ${order.adresse}${lieu ? ' — ' + lieu : ''}`,
         `Montant : ${order.total_dzd} DA (${order.payment_method})`,
         '',
         itemsText,

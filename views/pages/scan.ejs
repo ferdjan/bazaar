@@ -19,7 +19,9 @@
     <div class="form-card">
       <p><strong><%= t('order.ref') %> :</strong> <%= order.ref %></p>
       <p><strong><%= t('admin.customer') %> :</strong> <%= order.nom %></p>
-      <p><strong><%= t('checkout.address') %> :</strong> <%= order.adresse %>, <%= order.ville %></p>
+      <p><strong><%= t('checkout.address') %> :</strong> <%= order.adresse %><% if (order.ville) { %>, <%= order.ville %><% } %></p>
+      <% if (order.commune_id) { %><p><strong><%= t('checkout.commune') %> :</strong> <%= L(order.commune_name_fr, order.commune_name_ar) %></p><% } %>
+      <% if (order.wilaya_code) { %><p><strong><%= t('checkout.wilaya') %> :</strong> <%= L(order.wilaya_name_fr, order.wilaya_name_ar) %></p><% } %>
       <p><strong><%= t('order.total') %> :</strong> <%= formatDzd(order.total_dzd) %></p>
       <p><strong><%= t('order.status') %> :</strong> <%= t('status.' + order.status) %></p>
       <p><strong><%= t('order.payment') %> :</strong> <%= order.refund_dzd > 0 ? t('pay.refunded') : t('pay.' + order.payment_status) %></p>

@@ -7,7 +7,7 @@
   <p><%= t('admin.customer') %> : <strong><%= order.nom %></strong></p>
   <p><%= t('auth.email') %> : <%= order.email %></p>
   <p><%= t('auth.phone') %> : <%= order.telephone %></p>
-  <p><%= t('checkout.address') %> : <%= order.adresse %>, <%= order.ville %></p>
+  <p><%= t('checkout.address') %> : <%= order.adresse %><% if (order.ville) { %>, <%= order.ville %><% } %></p>
   <% if (order.wilaya_code) { %><p><%= t('checkout.wilaya') %> : <strong><%= L(order.wilaya_name_fr, order.wilaya_name_ar) %></strong></p><% } %>
   <% if (order.commune_id) { %><p><%= t('checkout.commune') %> : <strong><%= L(order.commune_name_fr, order.commune_name_ar) %></strong></p><% } %>
   <p><%= t('order.payment') %> : <%= t('pay.' + order.payment_method) %> — <%= order.refund_dzd > 0 ? t('pay.refunded') : t('pay.' + order.payment_status) %></p>

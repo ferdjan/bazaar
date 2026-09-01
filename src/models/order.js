@@ -88,6 +88,7 @@ const createTx = db.transaction((data) => {
     ...data.order,
     ref,
     delivery_dzd: data.order.delivery_dzd || 0,
+    ville: data.order.ville || '',
     wilaya_code: data.order.wilaya_code || '',
     commune_id: data.order.commune_id || null,
     coupon_code: data.order.coupon_code || '',

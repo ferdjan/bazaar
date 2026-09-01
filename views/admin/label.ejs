@@ -26,7 +26,9 @@
     <table>
       <tr><td>Client</td><td><%= order.nom %></td></tr>
       <tr><td>Téléphone</td><td><%= order.telephone %></td></tr>
-      <tr><td>Adresse</td><td><%= order.adresse %>, <%= order.ville %></td></tr>
+      <tr><td>Adresse</td><td><%= order.adresse %><% if (order.ville) { %>, <%= order.ville %><% } %></td></tr>
+      <% if (order.commune_id) { %><tr><td>Commune</td><td><%= order.commune_name_fr %></td></tr><% } %>
+      <% if (order.wilaya_code) { %><tr><td>Wilaya</td><td><%= order.wilaya_name_fr %></td></tr><% } %>
       <tr><td>Montant COD</td><td><strong><%= formatDzd(order.total_dzd) %></strong></td></tr>
     </table>
     <div class="qr"><img src="<%= qrDataUrl %>" alt="QR commande <%= order.ref %>"></div>

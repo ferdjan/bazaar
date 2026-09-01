@@ -10,13 +10,11 @@
     <label for="nom"><%= t('auth.name') %></label>
     <input id="nom" type="text" name="nom" autocomplete="name" maxlength="100" value="<%= form ? form.nom : (user ? user.name : '') %>" required>
     <label for="email"><%= t('auth.email') %></label>
-    <input id="email" type="email" name="email" autocomplete="email" maxlength="254" value="<%= form ? form.email : (user ? user.email : '') %>" required>
+    <input id="email" type="email" name="email" autocomplete="email" maxlength="254" value="<%= form ? form.email : (user ? user.email : '') %>">
     <label for="telephone"><%= t('auth.phone') %></label>
     <input id="telephone" type="tel" name="telephone" autocomplete="tel" inputmode="tel" maxlength="20" value="<%= form ? form.telephone : '' %>" required>
     <label for="adresse"><%= t('checkout.address') %></label>
     <input id="adresse" type="text" name="adresse" autocomplete="street-address" maxlength="500" value="<%= form ? form.adresse : '' %>" required>
-    <label for="ville"><%= t('checkout.city') %></label>
-    <input id="ville" type="text" name="ville" autocomplete="address-level2" maxlength="100" value="<%= form ? form.ville : '' %>" required>
     <label for="wilaya"><%= t('checkout.wilaya') %></label>
     <select id="wilaya" name="wilaya_code" autocomplete="address-level1">
       <option value=""><%= t('checkout.select') %></option>
