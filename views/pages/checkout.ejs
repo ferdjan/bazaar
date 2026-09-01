@@ -17,6 +17,20 @@
     <input id="adresse" type="text" name="adresse" autocomplete="street-address" maxlength="500" value="<%= form ? form.adresse : '' %>" required>
     <label for="ville"><%= t('checkout.city') %></label>
     <input id="ville" type="text" name="ville" autocomplete="address-level2" maxlength="100" value="<%= form ? form.ville : '' %>" required>
+    <label for="wilaya"><%= t('checkout.wilaya') %></label>
+    <select id="wilaya" name="wilaya_code" autocomplete="address-level1">
+      <option value=""><%= t('checkout.select') %></option>
+      <% wilayas.forEach(function(w){ %>
+        <option value="<%= w.code %>" <%= form && form.wilaya_code === w.code ? 'selected' : '' %>><%= L(w.name_fr, w.name_ar) %></option>
+      <% }) %>
+    </select>
+    <label for="commune"><%= t('checkout.commune') %></label>
+    <select id="commune" name="commune_id" autocomplete="address-level2" disabled>
+      <option value=""><%= t('checkout.select') %></option>
+      <% communes.forEach(function(c){ %>
+        <option value="<%= c.id %>" data-wilaya="<%= c.wilaya_code %>" <%= form && String(form.commune_id) === String(c.id) ? 'selected' : '' %>><%= L(c.name_fr, c.name_ar) %></option>
+      <% }) %>
+    </select>
 
     <h2><%= t('checkout.payment') %></h2>
     <label class="radio"><input type="radio" name="payment_method" value="cod" <%= (!form || form.payment_method === 'cod') ? 'checked' : '' %>> <%= t('checkout.cod') %></label>
@@ -36,4 +50,5 @@
     <button type="submit" class="btn btn-primary block"><%= t('checkout.place') %></button>
   </form>
 </main>
+<script src="/js/checkout.js" defer></script>
 <%- include('../partials/footer') %>

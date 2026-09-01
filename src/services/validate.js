@@ -72,6 +72,8 @@ function checkout(body) {
     telephone: textField(body.telephone, MAX.telephone),
     adresse: textField(body.adresse, MAX.adresse),
     ville: textField(body.ville, MAX.ville),
+    wilaya_code: textField(body.wilaya_code, 2),
+    commune_id: textField(body.commune_id, 10),
     payment_method: textField(body.payment_method, 20),
   };
 
@@ -81,6 +83,10 @@ function checkout(body) {
   if (!isPhone(form.telephone)) errors.telephone = 'auth.required';
   if (!isStr(form.adresse, { min: 1, max: MAX.adresse })) errors.adresse = 'auth.required';
   if (!isStr(form.ville, { min: 1, max: MAX.ville })) errors.ville = 'auth.required';
+  // Wilaya/commune optionnels : si renseignés, formats strictement contrôlés.
+  // L'existence réelle est vérifiée dans la route (accès base).
+  if (form.wilaya_code && !/^\d{2}$/.test(form.wilaya_code)) errors.wilaya_code = 'checkout.invalid_location';
+  if (form.commune_id && !isId(form.commune_id)) errors.commune_id = 'checkout.invalid_location';
   if (!['cod', 'stripe', 'paypal'].includes(form.payment_method)) errors.payment_method = 'auth.required';
 
   return {

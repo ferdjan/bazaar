@@ -3,6 +3,7 @@ const router = require('express').Router();
 const config = require('../config');
 const orderModel = require('../models/order');
 const coupon = require('../models/coupon');
+const location = require('../models/location');
 const { getCart, validateCart, clearCart } = require('../services/cart');
 const { dzdToEurString } = require('../services/currency');
 const validate = require('../services/validate');
@@ -26,7 +27,27 @@ function renderCheckout(res, { items, user, error, form, subtotal, discount, cou
     error,
     form,
     couponCode: couponCode || '',
+    wilayas: location.listWilayas(),
+    communes: location.listCommunes(),
   });
+}
+
+// Résout la wilaya/commune (optionnelles) depuis le formulaire. Retourne
+// { ok, errorKey, wilaya_code, commune_id }. Vérifie l'existence en base et la
+// cohérence commune ↔ wilaya.
+function resolveLocation(wilayaCode, communeId) {
+  if (!wilayaCode && !communeId) return { ok: true, wilaya_code: '', commune_id: null };
+
+  if (communeId) {
+    const commune = location.getCommune(parseInt(communeId, 10));
+    if (!commune) return { ok: false, errorKey: 'checkout.invalid_location' };
+    if (wilayaCode && commune.wilaya_code !== wilayaCode) return { ok: false, errorKey: 'checkout.invalid_location' };
+    return { ok: true, wilaya_code: commune.wilaya_code, commune_id: commune.id };
+  }
+
+  const wilaya = location.getWilaya(wilayaCode);
+  if (!wilaya) return { ok: false, errorKey: 'checkout.invalid_location' };
+  return { ok: true, wilaya_code: wilaya.code, commune_id: null };
 }
 
 // Calcule la remise coupon valide pour la session, sinon 0.
@@ -72,6 +93,15 @@ router.post('/commande', paymentLimiter, (req, res, next) => {
     });
   }
 
+  // Résolution wilaya/commune (existence + cohérence vérifiées en base).
+  const loc = resolveLocation(v.form.wilaya_code, v.form.commune_id);
+  if (!loc.ok) {
+    return renderCheckout(res, {
+      items: cart.items, user: req.session.user || null,
+      error: loc.errorKey, form: v.form, subtotal: cart.total,
+    });
+  }
+
   // 2. Recalcul et validation du panier depuis la base (prix, stock, taille…).
   const checked = validateCart(req);
   if (!checked.ok) {
@@ -103,6 +133,8 @@ router.post('/commande', paymentLimiter, (req, res, next) => {
         telephone: v.form.telephone,
         adresse: v.form.adresse,
         ville: v.form.ville,
+        wilaya_code: loc.wilaya_code,
+        commune_id: loc.commune_id,
         coupon_code: sc.code,
         discount_dzd: sc.discount,
       },

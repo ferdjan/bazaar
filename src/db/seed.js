@@ -32,6 +32,18 @@ function seed() {
     console.log('Compte admin créé :', config.adminEmail);
   }
 
+  if (db.prepare('SELECT COUNT(*) AS n FROM wilayas').get().n === 0) {
+    const locations = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'locations.json'), 'utf8'));
+    const insWilaya = db.prepare('INSERT INTO wilayas (code, name_fr, name_ar) VALUES (?, ?, ?)');
+    const insCommune = db.prepare('INSERT INTO communes (id, wilaya_code, name_fr, name_ar) VALUES (?, ?, ?, ?)');
+    const seedTx = db.transaction(() => {
+      for (const w of locations.wilayas) insWilaya.run(w.code, w.name_fr, w.name_ar);
+      for (const c of locations.communes) insCommune.run(c.id, c.wilaya_code, c.name_fr, c.name_ar);
+    });
+    seedTx();
+    console.log('Wilayas et communes créées.');
+  }
+
   if (db.prepare('SELECT COUNT(*) AS n FROM categories').get().n === 0) {
     const insCat = db.prepare('INSERT INTO categories (slug, name_fr, name_ar) VALUES (?, ?, ?)');
     insCat.run('vetements', 'Vêtements', 'ملابس');

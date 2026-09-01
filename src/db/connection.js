@@ -70,6 +70,8 @@ function migrate() {
   if (!cols.includes('returned_at')) db.exec('ALTER TABLE orders ADD COLUMN returned_at TEXT');
   if (!cols.includes('coupon_code')) db.exec("ALTER TABLE orders ADD COLUMN coupon_code TEXT NOT NULL DEFAULT ''");
   if (!cols.includes('discount_dzd')) db.exec('ALTER TABLE orders ADD COLUMN discount_dzd INTEGER NOT NULL DEFAULT 0');
+  if (!cols.includes('wilaya_code')) db.exec("ALTER TABLE orders ADD COLUMN wilaya_code TEXT NOT NULL DEFAULT ''");
+  if (!cols.includes('commune_id')) db.exec('ALTER TABLE orders ADD COLUMN commune_id INTEGER');
 
   // Répare les anciennes commandes COD marquées payées mais restées livrées.
   // Cette combinaison est incohérente : le paiement validé est l'étape finale.
@@ -84,6 +86,18 @@ function migrate() {
   }
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS wilayas (
+      code    TEXT PRIMARY KEY,
+      name_fr TEXT NOT NULL,
+      name_ar TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS communes (
+      id          INTEGER PRIMARY KEY,
+      wilaya_code TEXT NOT NULL REFERENCES wilayas(code),
+      name_fr     TEXT NOT NULL,
+      name_ar     TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_communes_wilaya ON communes(wilaya_code);
     CREATE TABLE IF NOT EXISTS order_status_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,

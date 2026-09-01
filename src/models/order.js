@@ -23,6 +23,26 @@ function withItems(order) {
   return order;
 }
 
+// Attache les noms bilingues de la wilaya/commune pour l'affichage des vues.
+function withLocation(order) {
+  if (!order) return null;
+  if (order.wilaya_code) {
+    const w = db.prepare('SELECT name_fr, name_ar FROM wilayas WHERE code = ?').get(order.wilaya_code);
+    if (w) {
+      order.wilaya_name_fr = w.name_fr;
+      order.wilaya_name_ar = w.name_ar;
+    }
+  }
+  if (order.commune_id) {
+    const c = db.prepare('SELECT name_fr, name_ar FROM communes WHERE id = ?').get(order.commune_id);
+    if (c) {
+      order.commune_name_fr = c.name_fr;
+      order.commune_name_ar = c.name_ar;
+    }
+  }
+  return order;
+}
+
 // Création atomique : commande + articles + décrément de stock vérifié.
 // Le stock est décrémenté avec une condition `stock >= quantité` afin de ne
 // JAMAIS masquer une insuffisance (l'ancien MAX(0, stock - ?) tronquait).
@@ -59,15 +79,17 @@ const createTx = db.transaction((data) => {
   const insOrder = db.prepare(`
     INSERT INTO orders
       (ref, user_id, status, total_dzd, total_eur, delivery_dzd, payment_method, payment_status,
-       provider_id, nom, email, telephone, adresse, ville, coupon_code, discount_dzd)
+       provider_id, nom, email, telephone, adresse, ville, wilaya_code, commune_id, coupon_code, discount_dzd)
     VALUES
       (@ref, @user_id, @status, @total_dzd, @total_eur, @delivery_dzd, @payment_method, @payment_status,
-       @provider_id, @nom, @email, @telephone, @adresse, @ville, @coupon_code, @discount_dzd)
+       @provider_id, @nom, @email, @telephone, @adresse, @ville, @wilaya_code, @commune_id, @coupon_code, @discount_dzd)
   `);
   const info = insOrder.run({
     ...data.order,
     ref,
     delivery_dzd: data.order.delivery_dzd || 0,
+    wilaya_code: data.order.wilaya_code || '',
+    commune_id: data.order.commune_id || null,
     coupon_code: data.order.coupon_code || '',
     discount_dzd: data.order.discount_dzd || 0,
   });
@@ -88,11 +110,11 @@ function create(data) {
 }
 
 function findByRef(ref) {
-  return withItems(db.prepare('SELECT * FROM orders WHERE ref = ?').get(ref));
+  return withLocation(withItems(db.prepare('SELECT * FROM orders WHERE ref = ?').get(ref)));
 }
 
 function findById(id) {
-  return withItems(db.prepare('SELECT * FROM orders WHERE id = ?').get(id));
+  return withLocation(withItems(db.prepare('SELECT * FROM orders WHERE id = ?').get(id)));
 }
 
 function listHistory(ref) {

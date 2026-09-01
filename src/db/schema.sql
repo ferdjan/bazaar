@@ -96,7 +96,22 @@ CREATE TABLE IF NOT EXISTS orders (
   telephone      TEXT NOT NULL,
   adresse        TEXT NOT NULL,
   ville          TEXT NOT NULL,
+  wilaya_code    TEXT NOT NULL DEFAULT '',
+  commune_id     INTEGER,
   created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS wilayas (
+  code    TEXT PRIMARY KEY,
+  name_fr TEXT NOT NULL,
+  name_ar TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS communes (
+  id          INTEGER PRIMARY KEY,
+  wilaya_code TEXT NOT NULL REFERENCES wilayas(code),
+  name_fr     TEXT NOT NULL,
+  name_ar     TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS order_items (
@@ -147,6 +162,7 @@ CREATE TABLE IF NOT EXISTS newsletter (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE INDEX IF NOT EXISTS idx_communes_wilaya ON communes(wilaya_code);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images(product_id, position);
 CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id, created_at DESC);
