@@ -55,6 +55,12 @@ module.exports = {
     pass: process.env.SMTP_PASS || '',
     from: process.env.SMTP_FROM || '',
   },
+  // Connexion Google (OAuth 2.0). Laisser vides pour masquer le bouton.
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    redirectUri: process.env.GOOGLE_REDIRECT_URI || '',
+  },
   // Durée de validité (en heures) du lien de réinitialisation.
   resetTokenTtlHours: parseInt(process.env.RESET_TOKEN_TTL_HOURS || '1', 10),
   // Seuils de rate limiting (surchargeables en test via les variables d'env).

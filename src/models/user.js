@@ -20,6 +20,10 @@ function findByEmail(email) {
   return db.prepare('SELECT * FROM users WHERE email = ?').get(email) || null;
 }
 
+function findByOAuth(provider, oauthId) {
+  return db.prepare('SELECT * FROM users WHERE oauth_provider = ? AND oauth_id = ?').get(provider, oauthId) || null;
+}
+
 function findById(id) {
   return sanitize(db.prepare('SELECT * FROM users WHERE id = ?').get(id));
 }
@@ -78,7 +82,12 @@ function resetPassword(id, password_hash) {
   ).run(password_hash, id);
 }
 
+// Associe un compte existant à une identité OAuth (connexion Google).
+function linkOAuth(id, provider, oauthId) {
+  db.prepare('UPDATE users SET oauth_provider = ?, oauth_id = ? WHERE id = ?').run(provider, oauthId, id);
+}
+
 module.exports = {
-  findByEmail, findById, create, listCustomers, listSellers, countCustomers, countSellers,
-  setResetToken, findByResetToken, resetPassword,
+  findByEmail, findByOAuth, findById, create, listCustomers, listSellers, countCustomers, countSellers,
+  setResetToken, findByResetToken, resetPassword, linkOAuth,
 };

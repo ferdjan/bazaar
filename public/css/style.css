@@ -139,6 +139,12 @@ main.container { padding-top: 36px; padding-bottom: 56px; min-height: 50vh; }
 .btn-whatsapp { background: #128c4a; border-color: #25d366; color: #eafff1; }
 .btn-whatsapp:hover { background: #1aa85a; border-color: #25d366; color: #ffffff; box-shadow: 0 10px 30px rgba(37, 211, 102, 0.28); }
 
+.btn-google { background: var(--surface-2); border-color: var(--border); color: var(--text); }
+.btn-google:hover { background: rgba(201, 162, 39, 0.08); border-color: var(--gold); color: var(--gold-light); }
+.oauth-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0 10px; color: var(--muted, #999); }
+.oauth-divider::before, .oauth-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.oauth-divider span { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; }
+
 .btn-sm { padding: 7px 16px; font-size: 0.76rem; }
 .btn-lg { padding: 17px 40px; font-size: 0.94rem; }
 .btn.block { display: flex; width: 100%; text-align: center; margin-top: 14px; }

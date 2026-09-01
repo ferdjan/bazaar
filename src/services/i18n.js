@@ -304,6 +304,9 @@ const strings = {
   // Flash / messages
   'cart.added': { fr: 'Produit ajouté au panier.', ar: 'تمت إضافة المنتج إلى السلة.' },
   'auth.register_success': { fr: 'Compte créé. Bienvenue !', ar: 'تم إنشاء الحساب. مرحباً بك!' },
+  'auth.google': { fr: 'Continuer avec Google', ar: 'المتابعة باستخدام Google' },
+  'auth.google_or': { fr: 'ou', ar: 'أو' },
+  'auth.oauth_error': { fr: 'Connexion Google impossible. Réessayez.', ar: 'تعذر تسجيل الدخول عبر Google. حاول مرة أخرى.' },
   'order.cancelled': { fr: 'Paiement annulé.', ar: 'تم إلغاء الدفع.' },
   'order.pay_again': { fr: 'Réessayer le paiement', ar: 'إعادة محاولة الدفع' },
 };

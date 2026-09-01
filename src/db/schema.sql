@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
   role          TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('admin', 'seller', 'customer')),
   reset_token   TEXT NOT NULL DEFAULT '',
   reset_expires TEXT,
+  oauth_provider TEXT NOT NULL DEFAULT '',
+  oauth_id      TEXT NOT NULL DEFAULT '',
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -163,6 +165,7 @@ CREATE TABLE IF NOT EXISTS newsletter (
 );
 
 CREATE INDEX IF NOT EXISTS idx_communes_wilaya ON communes(wilaya_code);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id) WHERE oauth_provider != '' AND oauth_id != '';
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images(product_id, position);
 CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id, created_at DESC);

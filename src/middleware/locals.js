@@ -30,6 +30,7 @@ function locals(req, res, next) {
   res.locals.cartCount = cartCount(req);
   res.locals.path = req.path;
   res.locals.categories = category.listAll();
+  res.locals.googleAuth = !!(config.google && config.google.clientId && config.google.clientSecret);
   res.locals.baseUrl = config.baseUrl.replace(/\/$/, '');
   res.locals.flash = (req.session && req.session.flash) || null;
   if (req.session) req.session.flash = null;

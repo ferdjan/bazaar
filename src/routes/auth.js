@@ -11,6 +11,7 @@ const validate = require('../services/validate');
 const config = require('../config');
 const { logger } = require('../services/logger');
 const mail = require('../services/mail');
+const google = require('../services/oauth/google');
 
 router.get('/inscription', (req, res) => {
   res.render('pages/register', { title: 'register' });
@@ -60,6 +61,68 @@ router.post('/connexion', loginLimiter, (req, res, next) => {
   const dest = u.role === 'admin' ? '/admin' : (u.role === 'seller' ? '/scan' : (req.session.returnTo || '/compte'));
 
   // Régénère l'identifiant de session après authentification réussie.
+  req.session.regenerate((err) => {
+    if (err) return next(err);
+    req.session.user = { id: u.id, name: u.name, email: u.email, role: u.role };
+    res.redirect(dest);
+  });
+});
+
+// --- Connexion Google (OAuth 2.0) -------------------------------------------
+
+// Redirige vers l'écran de consentement Google. Un jeton d'état aléatoire est
+// stocké en session pour vérifier la réponse au retour (anti-CSRF).
+router.get('/auth/google', (req, res) => {
+  if (!google.isConfigured()) {
+    req.session.flash = { type: 'error', key: 'auth.oauth_error' };
+    return res.redirect('/connexion');
+  }
+  const state = crypto.randomBytes(16).toString('hex');
+  req.session.oauthState = state;
+  res.redirect(google.buildAuthUrl(state));
+});
+
+// Retour de Google : échange le code, lit le profil, connecte ou crée le compte.
+router.get('/auth/google/callback', async (req, res, next) => {
+  const fail = () => {
+    req.session.flash = { type: 'error', key: 'auth.oauth_error' };
+    return res.redirect('/connexion');
+  };
+
+  // Échec ou refus côté fournisseur.
+  if (req.query.error) return fail();
+
+  const state = String(req.query.state || '');
+  const expected = req.session.oauthState;
+  delete req.session.oauthState;
+  if (!state || state !== expected) return fail();
+
+  const code = String(req.query.code || '');
+  if (!code) return fail();
+
+  let profile;
+  try {
+    const tokens = await google.exchangeCode(code);
+    profile = google.normalizeProfile(await google.fetchProfile(tokens.access_token));
+  } catch (err) {
+    logger.warn('connexion Google échouée', { err: String((err && err.message) || err) });
+    return fail();
+  }
+  if (!profile) return fail();
+
+  let u = userModel.findByOAuth('google', profile.sub);
+  if (!u) {
+    u = userModel.findByEmail(profile.email);
+    if (u) {
+      // E-mail vérifié par Google : on associe le compte existant.
+      userModel.linkOAuth(u.id, 'google', profile.sub);
+    } else {
+      u = userModel.create({ email: profile.email, password_hash: '', name: profile.name, role: 'customer' });
+      userModel.linkOAuth(u.id, 'google', profile.sub);
+    }
+  }
+
+  const dest = u.role === 'admin' ? '/admin' : (u.role === 'seller' ? '/scan' : (req.session.returnTo || '/compte'));
   req.session.regenerate((err) => {
     if (err) return next(err);
     req.session.user = { id: u.id, name: u.name, email: u.email, role: u.role };

@@ -84,6 +84,13 @@ function migrate() {
   if (!ucols.includes('reset_expires')) {
     db.exec('ALTER TABLE users ADD COLUMN reset_expires TEXT');
   }
+  if (!ucols.includes('oauth_provider')) {
+    db.exec("ALTER TABLE users ADD COLUMN oauth_provider TEXT NOT NULL DEFAULT ''");
+  }
+  if (!ucols.includes('oauth_id')) {
+    db.exec("ALTER TABLE users ADD COLUMN oauth_id TEXT NOT NULL DEFAULT ''");
+  }
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id) WHERE oauth_provider != '' AND oauth_id != ''");
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS wilayas (
